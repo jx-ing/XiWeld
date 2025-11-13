@@ -48,29 +48,9 @@ CAssemblyWeld::CAssemblyWeld(CServoMotorDriver* pCtrlCardDriver/* = NULL*/, COPC
 {
 	if (TRUE != InitAllUnit())
 	{
-		XUI::MesBox::PopError("³õÊ¼»¯¿ØÖÆµ¥ÔªÊ§°Ü");
-	}
-	WriteLog("³õÊ¼»¯¿ØÖÆµ¥ÔªÍê±Ï£¡");
-
-	//³õÊ¼»¯»­¿ò¿Ø¼şID
-	m_vnDrawComponentID.push_back(IDC_STATIC_DRAW_PART_SINGLE);
-	m_vnDrawComponentID.push_back(IDC_STATIC_DRAW_PART_SINGLE2);
-	m_vnDrawComponentID.push_back(IDC_STATIC_DRAW_PART_SINGLE3);
-	m_vnDrawComponentID.push_back(IDC_STATIC_DRAW_PART_SINGLE4);
-
-	TrackInspectToolsLoad(".\\Local_Files\\ExtLib\\Vision\\ModelPath", 3, 33);
-	
-	//º¸½ÓĞÅÏ¢³õÊ¼»¯
-	//m_StatisticalData = CStatisticalData::getInstance();
-	m_vpUnit[0]->SwitchIO("CoolGas", true);
-}
-
-CAssemblyWeld::~CAssemblyWeld()
-{	
-	std::vector<CRobotDriverAdaptor*>::iterator Iter;
-	for (Iter = m_vpRobotDriver.begin(); Iter != m_vpRobotDriver.end(); Iter++)
-	{
-		CRobotDriverAdaptor* temp = *Iter;
+{
+	ResetUnitRuntimeState();
+	DestroyUnits();
 		DELETE_POINTER(temp);
 	}
 	m_vpRobotDriver.clear();
@@ -155,7 +135,7 @@ BEGIN_MESSAGE_MAP(CAssemblyWeld, CDialog)
 	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
-// <start> ******************************* ½çÃæÏà¹Øº¯Êı ******************************* <start> //
+// <start> ******************************* ç•Œé¢ç›¸å…³å‡½æ•° ******************************* <start> //
 BOOL CAssemblyWeld::OnInitDialog()
 {
 	CDialog::OnInitDialog();
@@ -169,10 +149,10 @@ BOOL CAssemblyWeld::OnInitDialog()
 	m_bkBrush.CreateSolidBrush(RGB(15, 60, 170));   //(150, 255, 212)  (173, 215, 255)  (15, 60, 170)
 	m_Brush.CreateSolidBrush(RGB(173, 215, 255));
 	m_cFontCorporation.CreateFont(20, 0, 0, 0, FW_NORMAL, TRUE, TRUE, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS,
-		CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH & FF_SWISS, "ËÎÌå");
+		CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH & FF_SWISS, "å®‹ä½“");
 
 	m_static.SubclassDlgItem(IDC_STATIC_OPERATE_HINT, this);
-	m_cFont.CreatePointFont(200, _T("ËÎÌå"));
+	m_cFont.CreatePointFont(200, _T("å®‹ä½“"));
 	m_static.SetFont(&m_cFont);
 
 	VerticalCenter(m_cCoorX);
@@ -191,17 +171,17 @@ BOOL CAssemblyWeld::OnInitDialog()
 	}
 	m_comboScanTimes.SetCurSel(PARA_RECOGNITION(nLineScanTimes) - 1);
 
-	// ljx ±êÇ©Ò³ ³õÊ¼»¯
+	// ljx æ ‡ç­¾é¡µ åˆå§‹åŒ–
 	{
-		// 1. ¹ØÁª tab
+		// 1. å…³è” tab
 			m_tab.SubclassDlgItem(IDC_TAB1, this);
 
-		// 2. ¼Ó 3 ¸ö±êÇ©
-		m_tab.InsertItem(0, _T("¹¹¼ş"));
+		// 2. åŠ  3 ä¸ªæ ‡ç­¾
+		m_tab.InsertItem(0, _T("æ„ä»¶"));
 		m_tab.InsertItem(1, _T("CAM"));
-		m_tab.InsertItem(2, _T("º¸½Ó"));
+		m_tab.InsertItem(2, _T("ç„Šæ¥"));
 
-		// 3. ´´½¨ 3 ¸ö×Ó¶Ô»°¿ò£¬¸¸´°¿Ú¶¼¸ø tab
+		// 3. åˆ›å»º 3 ä¸ªå­å¯¹è¯æ¡†ï¼Œçˆ¶çª—å£éƒ½ç»™ tab
 		m_pageScan = new CShowCAM;
 		m_pageWeld = new CWeldPage;
 		m_pagePieceType = new WorkPieceType;
@@ -210,14 +190,14 @@ BOOL CAssemblyWeld::OnInitDialog()
 		m_pageWeld->Create(IDD_PAGE_WELD, &m_tab);
 		m_pagePieceType->Create(IDD_PAGE_SCAN, &m_tab);
 
-		// 4. °Ñ×ÓÒ³°Ú½ø tab µÄ¿Í»§Çø
+		// 4. æŠŠå­é¡µæ‘†è¿› tab çš„å®¢æˆ·åŒº
 		CRect rc;
 		m_tab.GetClientRect(&rc);
 		m_tab.AdjustRect(FALSE, &rc);
 
 		m_pageScan->SetWindowPos(NULL, rc.left, rc.top, rc.Width(), rc.Height(), SWP_HIDEWINDOW);
 		m_pageWeld->SetWindowPos(NULL, rc.left, rc.top, rc.Width(), rc.Height(), SWP_HIDEWINDOW);
-		m_pagePieceType->SetWindowPos(NULL, rc.left, rc.top, rc.Width(), rc.Height(), SWP_SHOWWINDOW);  // Ä¬ÈÏÏÔÊ¾µÚ0Ò³
+		m_pagePieceType->SetWindowPos(NULL, rc.left, rc.top, rc.Width(), rc.Height(), SWP_SHOWWINDOW);  // é»˜è®¤æ˜¾ç¤ºç¬¬0é¡µ
 	}
 
 	LoadOptionalFunctionPara();
@@ -232,10 +212,10 @@ BOOL CAssemblyWeld::OnInitDialog()
 		m_vpScanInit[nUnitNum]->m_pShowImage = m_vpShowLaserImgBuff[nUnitNum];
 	}
 
-	SetTimer(2, 200, NULL); // ÏÔÊ¾Í¼Æ¬
-	//ÒÑĞŞ¸Ä
+	SetTimer(2, 200, NULL); // æ˜¾ç¤ºå›¾ç‰‡
+	//å·²ä¿®æ”¹
 	XUI::Languge::GetInstance().translateDialog(this);
-	WriteLog("³õÊ¼»¯ÏµÍ³Íê±Ï£¡");
+	WriteLog("åˆå§‹åŒ–ç³»ç»Ÿå®Œæ¯•ï¼");
 	return TRUE;
 }
 
@@ -246,8 +226,8 @@ VOID CAssemblyWeld::MainFromArrangement()
 
 BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 {
-	// TODO: ÔÚ´ËÌí¼Ó×¨ÓÃ´úÂëºÍ/»òµ÷ÓÃ»ùÀà
-	//Êó±êÍ£Áô ÌáÊ¾ĞÅÏ¢
+	// TODO: åœ¨æ­¤æ·»åŠ ä¸“ç”¨ä»£ç å’Œ/æˆ–è°ƒç”¨åŸºç±»
+	//é¼ æ ‡åœç•™ æç¤ºä¿¡æ¯
 	//m_tooltip.RelayEvent(pMsg);
 
 	int nUnitNo = 0;
@@ -264,7 +244,7 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 	bool bWorking = (true == m_bAutoWeldWorking) || ((NULL != m_pWeldAfterMeasure) && (true == m_pWeldAfterMeasure->IsWorking()));
 	if (true == bWorking)
 	{
-		//WriteLog("¹¤×÷ÖĞ½ûÖ¹Ê¹ÓÃ°´¼üÒÆ¶¯Íâ²¿Öá!");
+		//WriteLog("å·¥ä½œä¸­ç¦æ­¢ä½¿ç”¨æŒ‰é”®ç§»åŠ¨å¤–éƒ¨è½´!");
 		if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_KEYUP)
 		{
 			return TRUE;
@@ -280,7 +260,7 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 		}
 		else if (pMsg->wParam == VK_SPACE)
 		{
-			//WriteLog("´¥·¢¿Õ¸ñÔİÍ£");
+			//WriteLog("è§¦å‘ç©ºæ ¼æš‚åœ");
 			//OnBtnStop();
 			//CloseCameraLaserAssembly();
 			return TRUE;
@@ -289,9 +269,9 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 		{
 			if (!bServoRdy)
 			{
-				//ÒÑĞŞ¸Ä
-				SetHintInfo(XUI::Languge::GetInstance().translate("Íâ²¿ÖáÎ´¾ÍĞ÷!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
-				//SetHintInfo("Íâ²¿ÖáÎ´¾ÍĞ÷!");
+				//å·²ä¿®æ”¹
+				SetHintInfo(XUI::Languge::GetInstance().translate("å¤–éƒ¨è½´æœªå°±ç»ª!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
+				//SetHintInfo("å¤–éƒ¨è½´æœªå°±ç»ª!");
 				return TRUE;
 			}
 			pUnitDriver->ContiMove(1, /*3000.0*/dMaxSpeed / 60.0, 0.8);
@@ -302,9 +282,9 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 		{
 			if (!bServoRdy)
 			{
-				//ÒÑĞŞ¸Ä
-				SetHintInfo(XUI::Languge::GetInstance().translate("Íâ²¿ÖáÎ´¾ÍĞ÷!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
-				//SetHintInfo("Íâ²¿ÖáÎ´¾ÍĞ÷!");
+				//å·²ä¿®æ”¹
+				SetHintInfo(XUI::Languge::GetInstance().translate("å¤–éƒ¨è½´æœªå°±ç»ª!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
+				//SetHintInfo("å¤–éƒ¨è½´æœªå°±ç»ª!");
 				return TRUE;
 			}
 			pUnitDriver->ContiMove(0, /*3000.0*/dMaxSpeed / 60.0, 0.8);
@@ -315,7 +295,7 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 		//{
 		//	if (!bServoRdy)
 		//	{
-		//		SetHintInfo("Íâ²¿ÖáÎ´¾ÍĞ÷!");
+		//		SetHintInfo("å¤–éƒ¨è½´æœªå°±ç»ª!");
 		//		return TRUE;
 		//	}
 		//	m_cMoveCtrl.ContiMoveDis(AXIS_Y, 1, 0, m_cMoveCtrl.m_dNormalVelX, 0.5, 0.5);
@@ -325,7 +305,7 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 		//{
 		//	if (!bServoRdy)
 		//	{
-		//		SetHintInfo("Íâ²¿ÖáÎ´¾ÍĞ÷!");
+		//		SetHintInfo("å¤–éƒ¨è½´æœªå°±ç»ª!");
 		//		return TRUE;
 		//	}
 		//	m_cMoveCtrl.ContiMoveDis(AXIS_Y, 0, 0, m_cMoveCtrl.m_dNormalVelX, 0.5, 0.5);
@@ -354,7 +334,7 @@ BOOL CAssemblyWeld::PreTranslateMessage(MSG* pMsg)
 
 void CAssemblyWeld::OnTimer(UINT_PTR nIDEvent)
 {
-	// TODO: ÔÚ´ËÌí¼ÓÏûÏ¢´¦Àí³ÌĞò´úÂëºÍ/»òµ÷ÓÃÄ¬ÈÏÖµ
+	// TODO: åœ¨æ­¤æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç å’Œ/æˆ–è°ƒç”¨é»˜è®¤å€¼
 		//if (nIDEvent == 1)
 	//{
 	//	if (false == m_cMoveCtrl.ReadInbitDis(0) && false == m_bIfEmg)
@@ -365,7 +345,7 @@ void CAssemblyWeld::OnTimer(UINT_PTR nIDEvent)
 	//			m_bIfEmg = true;
 	//			m_vpRobotDriver[0]->ServoOff();
 	//			//m_vpRobotDriver[1]->ServoOff();
-	//			WriteLog("´¥·¢¼±Í£");
+	//			WriteLog("è§¦å‘æ€¥åœ");
 	//		}
 	//	}
 	//	else if (TRUE == m_cMoveCtrl.ReadInbitDis(0) && true == m_bIfEmg)
@@ -375,16 +355,16 @@ void CAssemblyWeld::OnTimer(UINT_PTR nIDEvent)
 	//		//m_vpRobotDriver[1]->HoldOff();
 	//	}
 	//}
-	if (nIDEvent == 2) // ÏÔÊ¾Í¼Ïñ
+	if (nIDEvent == 2) // æ˜¾ç¤ºå›¾åƒ
 	{
 		if (m_tab.GetCurSel() == 2 && m_pageWeld && ::IsWindow(m_pageWeld->m_hWnd))
 		{
-			// ÈÃ×ÓÒ³Ë¢ĞÂ
+			// è®©å­é¡µåˆ·æ–°
 			static_cast<CWeldPage*>(m_pageWeld)->RefreshTeachImage();
 		}
 		else
 		{
-			ShowTeachImage(); // ÈÔÈ»»­µ½¸¸¶Ô»°¿òÉÏ
+			ShowTeachImage(); // ä»ç„¶ç”»åˆ°çˆ¶å¯¹è¯æ¡†ä¸Š
 		}
 	}
 	if (nIDEvent == 99)
@@ -410,7 +390,7 @@ HBRUSH CAssemblyWeld::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		|| pWnd->GetDlgCtrlID() == IDC_CHECK_PROCESS_POP)
 	{
 		pDC->SetBkMode(TRANSPARENT);
-		pDC->SetTextColor(RGB(0, 0, 0)); //×ÖÌåÑÕÉ«
+		pDC->SetTextColor(RGB(0, 0, 0)); //å­—ä½“é¢œè‰²
 		return   m_Brush;  
 	}
 
@@ -436,12 +416,12 @@ HBRUSH CAssemblyWeld::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		|| pWnd->GetDlgCtrlID() == IDC_STATIC_SCAN_TIMES
 		|| pWnd->GetDlgCtrlID() == IDC_STATIC_TYPE_CHOOSE || pWnd->GetDlgCtrlID() == IDC_STATIC_LABEL_SHOWIMGNUM
 		|| pWnd->GetDlgCtrlID() == IDC_STATIC_LABEL_SHOWIMGNUM2 || pWnd->GetDlgCtrlID() == IDC_STATIC_LABEL_SHOWIMGNUM3
-		|| pWnd->GetDlgCtrlID() == IDC_STATIC_LABEL_SHOWIMGNUM4)  //¾²Ì¬ÎÄ±¾
+		|| pWnd->GetDlgCtrlID() == IDC_STATIC_LABEL_SHOWIMGNUM4)  //é™æ€æ–‡æœ¬
 	{
 		//15, 60, 170
 		pDC->SetTextColor(RGB(255, 255, 255));
-		pDC->SetBkMode(TRANSPARENT);    //ÉèÖÃ¿Ø¼şÍ¸Ã÷
-		return   (HBRUSH)::GetStockObject(NULL_BRUSH);    //¼Ç×¡Ò»¶¨ÒªÓĞÕâ¾ä
+		pDC->SetBkMode(TRANSPARENT);    //è®¾ç½®æ§ä»¶é€æ˜
+		return   (HBRUSH)::GetStockObject(NULL_BRUSH);    //è®°ä½ä¸€å®šè¦æœ‰è¿™å¥
 	}
 
 	if (pWnd->GetDlgCtrlID() == IDC_EDIT_COOR_X || pWnd->GetDlgCtrlID() == IDC_EDIT_COOR_Y
@@ -451,7 +431,7 @@ HBRUSH CAssemblyWeld::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 		|| pWnd->GetDlgCtrlID() == IDC_EDIT_EXTERNAL_Z)
 	{
 		pDC->SetTextColor(RGB(255, 255, 255));
-		pDC->SetBkMode(TRANSPARENT);    //ÉèÖÃ¿Ø¼şÍ¸Ã÷
+		pDC->SetBkMode(TRANSPARENT);    //è®¾ç½®æ§ä»¶é€æ˜
 		return   m_bkBrush;
 	}
 
@@ -459,7 +439,7 @@ HBRUSH CAssemblyWeld::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	{
 		pDC->SetTextColor(RGB(255, 255, 255));
 		pDC->SetBkColor(RGB(0, 0, 0));    
-		pDC->SetBkMode(TRANSPARENT);    //ÉèÖÃ¿Ø¼şÍ¸Ã÷
+		pDC->SetBkMode(TRANSPARENT);    //è®¾ç½®æ§ä»¶é€æ˜
 		return   m_bkBrush;
 	}
 
@@ -468,7 +448,7 @@ HBRUSH CAssemblyWeld::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 
 void CAssemblyWeld::DoDataExchange(CDataExchange* pDX)
 {
-	// TODO: ÔÚ´ËÌí¼Ó×¨ÓÃ´úÂëºÍ/»òµ÷ÓÃ»ùÀà
+	// TODO: åœ¨æ­¤æ·»åŠ ä¸“ç”¨ä»£ç å’Œ/æˆ–è°ƒç”¨åŸºç±»
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CAssemblyWeld)
 	DDX_Control(pDX, IDC_EDIT_COOR_X, m_cCoorX);
@@ -513,11 +493,11 @@ void CAssemblyWeld::OnBtnPauseContinue()
 	//int PtnNum = WidgetLaserLock(pImg, LaserInfo, PARA_FLAT_MEASURE(bImageDirection),
 	//	PARA_FLAT_MEASURE(bCrossFilp), LogName);
 
-	WriteLog("µ¥»÷£º²âÊÔ°´Å¥");
+	WriteLog("å•å‡»ï¼šæµ‹è¯•æŒ‰é’®");
 	int nCameraNo = 0;
-	if (XUI::MesBox::PopOkCancel("Ğ£Ñé¸ú×ÙÏà»ú£¿"))
+	if (XUI::MesBox::PopOkCancel("æ ¡éªŒè·Ÿè¸ªç›¸æœºï¼Ÿ"))
 		nCameraNo = 0;
-	else if (XUI::MesBox::PopOkCancel("Ğ£Ñé²âÁ¿Ïà»ú£¿"))
+	else if (XUI::MesBox::PopOkCancel("æ ¡éªŒæµ‹é‡ç›¸æœºï¼Ÿ"))
 		nCameraNo = 1;
 	else
 		return;
@@ -563,14 +543,14 @@ void CAssemblyWeld::OnBtnPauseContinue()
 //		//int nWeldIndex = tWeldInfo.tAtrribute.nWeldSeamIdx;
 //		CString RefPointCloudFileName;
 //		RefPointCloudFileName.Format("%s00_PointCloudRecoTrack%d.txt", OUTPUT_PATH + "RobotA" + RECOGNITION_FOLDER, 4);
-//	//¼ÓÔØµãÔÆÊı¾İ
+//	//åŠ è½½ç‚¹äº‘æ•°æ®
 //			//vector<CvPoint3D64f> vtPointCloud;
 //			m_pWeldAfterMeasure->LoadContourData(pRobotDriver, m_pWeldAfterMeasure->m_sPointCloudFileName, vtPointCloud);
 //
 //			pPointCloud = (CvPoint3D64f*)vtPointCloud.data();
 //			PointCloudSize = vtPointCloud.size();
 //
-//			// ¼ÓÔØÈ«¾°Ïà»úÌáÈ¡µÄ¶ÔÓ¦µãÔÆ
+//			// åŠ è½½å…¨æ™¯ç›¸æœºæå–çš„å¯¹åº”ç‚¹äº‘
 //			vector<CvPoint3D64f> vtRefPointCloud;
 //			//		CvPoint3D64f tmp3DPoint;
 //
@@ -595,7 +575,7 @@ void CAssemblyWeld::OnBtnPauseContinue()
 //			RefPointCloudSize = vtRefPointCloud.size();
 //			pImageNum = (int*)m_pWeldAfterMeasure->m_vtImageNum.data();
 //
-//			// Î¤¸»½øÊä³öº¸·ìÂÖÀª½Ó¿Ú
+//			// éŸ¦å¯Œè¿›è¾“å‡ºç„Šç¼è½®å»“æ¥å£
 //			SetPara("LocalFiles\\ExLib\\Vision\\ConfigFiles", "Rebuild_Local_Point_Cloud", "debug_mode", "false");
 //			SetPara("LocalFiles\\ExLib\\Vision\\ConfigFiles", "Rebuild_Local_Point_Cloud", "debug_path", "D:\\XiRobotSW\\LocalFiles\\ExLib\\Vision\\ConfigFiles\\test");
 //			SetPara("LocalFiles\\ExLib\\Vision\\ConfigFiles", "Rebuild_Local_Point_Cloud", "thread_nums", "4");
@@ -620,7 +600,7 @@ void CAssemblyWeld::OnBtnPauseContinue()
 //
 //	}
 //
-//	// ¼ÓÔØº¸½Ó¹ì¼£
+//	// åŠ è½½ç„Šæ¥è½¨è¿¹
 //	E_WELD_SEAM_TYPE eWeldSeamType;
 //	double dExAxlePos;
 //	std::vector<T_ROBOT_COORS> vtRealWeldCoord;
@@ -649,16 +629,16 @@ void CAssemblyWeld::OnBtnPauseContinue()
 	//TestEndpointAndStandBoardLine(nRobotNo, nCameraNo);
 	//TestFindEndPoint();
 	//TestContiSwaySpot();
-	//if (IDOK == XiMessageBox("²âÊÔÍ¼Æ¬×ª»¯ÎªµãÔÆ"))
+	//if (IDOK == XiMessageBox("æµ‹è¯•å›¾ç‰‡è½¬åŒ–ä¸ºç‚¹äº‘"))
 	//{
 	//	TestScanEndptnImageProcess();
 	//}
-	//else if (IDOK == XiMessageBox("²âÊÔ»ñÈ¡µãÔÆ¶Ëµã"))
+	//else if (IDOK == XiMessageBox("æµ‹è¯•è·å–ç‚¹äº‘ç«¯ç‚¹"))
 	//{
 	//	TestGetEndPtnUsePointCloud_F();
 	//}
 
-	//// ´øÓĞ°²´¨Íâ²¿Öá»úÆ÷ÈËBP±äÁ¿·¢ËÍºÍJob:CONTIMOVANY-BPÔË¶¯²âÊÔ
+	//// å¸¦æœ‰å®‰å·å¤–éƒ¨è½´æœºå™¨äººBPå˜é‡å‘é€å’ŒJob:CONTIMOVANY-BPè¿åŠ¨æµ‹è¯•
 	//T_ROBOT_COORS tCoord = pRobotDriver->GetCurrentPos();// (900.0, 1100.0, 1900.0, 0.0, 0.0, 66.0, 0.0, 100.0, 200.0);
 	//T_ANGLE_PULSE tPulse = pRobotDriver->GetCurrentPulse();// (0, 0, 0, 0, 0, 0, 0, 0, 0);
 	//T_ROBOT_MOVE_INFO tRobotMoveInfo;
@@ -688,17 +668,17 @@ void CAssemblyWeld::OnBnClickedButtonSimulateIncise()
 	//cTeachImage.saveErrorData(false);
 	//return;
 
-	WriteLog("µ¥»÷£ºÊÖ¶¯´æÍ¼");
-    SaveErrorData("ÊÖ¶¯´æÍ¼");
+	WriteLog("å•å‡»ï¼šæ‰‹åŠ¨å­˜å›¾");
+    SaveErrorData("æ‰‹åŠ¨å­˜å›¾");
 	return;
  }
 
 void CAssemblyWeld::OnBtnClose() 
 {
-	WriteLog("µ¥»÷£ºÍË³ö");
+	WriteLog("å•å‡»ï¼šé€€å‡º");
 	if (true == m_bAutoWeldWorking)
 	{
-		XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜÖ´ĞĞÏßÉ¨!");
+		XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½æ‰§è¡Œçº¿æ‰«!");
 		return;
 	}
 
@@ -718,7 +698,7 @@ void CAssemblyWeld::OnBtnClose()
 		}
 	}
 
-	//ÖØÖÃÉÁÍË×´Ì¬
+	//é‡ç½®é—ªé€€çŠ¶æ€
 	COPini opini;
 	opini.SetFileName(OPTIONAL_FUNCTION);
 	opini.SetSectionName("Flashback");
@@ -729,7 +709,7 @@ void CAssemblyWeld::OnBtnClose()
 
 void CAssemblyWeld::CleanUp()
 {	
-	//ÍË³ö½çÃæÏÔÊ¾Ë¢ĞÂ×ÓÏß³Ì
+	//é€€å‡ºç•Œé¢æ˜¾ç¤ºåˆ·æ–°å­çº¿ç¨‹
 	m_bQuit = true;
 	m_bIfWindowOn = FALSE;	
 	m_bThreadShowMoveStateEnd = false;
@@ -737,7 +717,7 @@ void CAssemblyWeld::CleanUp()
 
 void CAssemblyWeld::OnBtnSystemPara() 
 {
-	WriteLog("µ¥»÷£º¹¤ÒÕ²ÎÊı");
+	WriteLog("å•å‡»ï¼šå·¥è‰ºå‚æ•°");
 	int nRobotNo = 0;
 	CUnit* pUnit = m_vpUnit[nRobotNo];
 	CWeldParamProcess cWeldParamProcess(m_vpUnit);
@@ -747,15 +727,15 @@ void CAssemblyWeld::OnBtnSystemPara()
 
 void CAssemblyWeld::OnBnClickedButtonSpare4()
 {
-	WriteLog("µ¥»÷£ºÖ´ĞĞÏßÉ¨");
+	WriteLog("å•å‡»ï¼šæ‰§è¡Œçº¿æ‰«");
 	if (true == m_bAutoWeldWorking)
 	{
-		XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜÖ´ĞĞÏßÉ¨!");
+		XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½æ‰§è¡Œçº¿æ‰«!");
 		return;
 	}
 	if (true == m_vtRobotThread[m_vpRobotDriver[0]->m_nRobotNo]->bRobotThreadStatus)
 	{
-		XiMessageBox("½ûÖ¹ÖØ¸´¿ªÆôÏßÉ¨£¡");
+		XiMessageBox("ç¦æ­¢é‡å¤å¼€å¯çº¿æ‰«ï¼");
 		return;
 	}
 	WorkPieceType workPieceType;
@@ -766,14 +746,14 @@ void CAssemblyWeld::OnBnClickedButtonSpare4()
 
 void CAssemblyWeld::OnBtnVisionShow() 
 {
-	WriteLog("µ¥»÷£ºÊÓ¾õ´°¿Ú");
+	WriteLog("å•å‡»ï¼šè§†è§‰çª—å£");
 	CDHCameraCtrlDlg cDHCameraCtrlDlg(m_vpUnit, this);
 	cDHCameraCtrlDlg.DoModal();
 }
 
 void CAssemblyWeld::OnBtnLoadTrack()
 {
-	WriteLog("µ¥»÷£ºÊ¶±ğ²ÎÊı");
+	WriteLog("å•å‡»ï¼šè¯†åˆ«å‚æ•°");
 	int nRobotNo = 0;
 	CUnit* pUnit = m_vpUnit[nRobotNo];
 	WAM::WeldAfterMeasure::InputParaWindow(pUnit->m_tContralUnit.strUnitName, m_tChoseWorkPieceType);
@@ -785,27 +765,27 @@ UINT CAssemblyWeld::ThreadScanLine(void* pParam)
 	T_ROBOT_THREAD* tThreadParam = ((T_ROBOT_THREAD*)pParam);
 	if (true == tThreadParam->bRobotThreadStatus)
 	{
-		XUI::MesBox::PopOkCancel("{0} »úĞµ±ÛÏßÉ¨Ïß³ÌÒÑÔÚÔËĞĞ", tThreadParam->pRobotCtrl->m_strRobotName);
+		XUI::MesBox::PopOkCancel("{0} æœºæ¢°è‡‚çº¿æ‰«çº¿ç¨‹å·²åœ¨è¿è¡Œ", tThreadParam->pRobotCtrl->m_strRobotName);
 		return 0;
 	}
 	long long lTimeS = XI_clock();
 	tThreadParam->bRobotThreadStatus = true;
 	try
 	{
-		// Ö´ĞĞÏßÉ¨
+		// æ‰§è¡Œçº¿æ‰«
 		tThreadParam->cIncisePlanePart->ScanLine(tThreadParam->pRobotCtrl->m_nRobotNo);
 	}
 	catch (...)
 	{
-		//ÒÑĞŞ¸Ä
-		XUI::MesBox::PopInfo("{0}ÏßÉ¨³öÏÖÒì³£", tThreadParam->pRobotCtrl->m_strRobotName.GetBuffer());
-		//XiMessageBox("%s ÏßÉ¨³öÏÖÒì³£", tThreadParam->pRobotCtrl->m_strRobotName);
+		//å·²ä¿®æ”¹
+		XUI::MesBox::PopInfo("{0}çº¿æ‰«å‡ºç°å¼‚å¸¸", tThreadParam->pRobotCtrl->m_strRobotName.GetBuffer());
+		//XiMessageBox("%s çº¿æ‰«å‡ºç°å¼‚å¸¸", tThreadParam->pRobotCtrl->m_strRobotName);
 	}
 
 	tThreadParam->bRobotThreadStatus = false;
-	//m_lWorkTime += (XI_clock() - lTimeS); // ¹¤×÷Ê±¼äÖĞµÄÏßÉ¨Ê±¼ä
-	//m_lScanTime += (XI_clock() - lTimeS); // ÏßÉ¨Ê±¼ä
-	//m_dTotalScanLen += (tThreadParam->pRobotCtrl->m_dScanLength / 1000.0); // µ¥Î»m
+	//m_lWorkTime += (XI_clock() - lTimeS); // å·¥ä½œæ—¶é—´ä¸­çš„çº¿æ‰«æ—¶é—´
+	//m_lScanTime += (XI_clock() - lTimeS); // çº¿æ‰«æ—¶é—´
+	//m_dTotalScanLen += (tThreadParam->pRobotCtrl->m_dScanLength / 1000.0); // å•ä½m
 	//CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
 	//pStatisticalData->UpdateScanData((tThreadParam->pRobotCtrl->m_dScanLength / 1000.0), m_lScanTime);
 	//pStatisticalData->UpdateWorkTime((XI_clock() - lTimeS));
@@ -836,13 +816,13 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 		CString sFolderName = PARA_RECOGNITION(sLineScanFolder);
 		if (PARA_RECOGNITION(nLineScanTimes) <= 0)
 		{
-			XiMessageBox("É¨Ãè´ÎÊıÉÙÓÚ1´Î");
+			XiMessageBox("æ‰«ææ¬¡æ•°å°‘äº1æ¬¡");
 			return false;
 		}
 		DeleteFile(LINE_SCAN_POINT_CLOUD);
 		for (int i = 0; i < PARA_RECOGNITION(nLineScanTimes); i++)
 		{
-			//ÏßÉ¨
+			//çº¿æ‰«
 			std::vector<CvPoint3D64f> vtPointCloud;
 			CString sNewFolderName;
 			if (PARA_RECOGNITION(nLineScanTimes) == 1)
@@ -861,11 +841,11 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 				return false;
 			}
 
-			// »ñÈ¡µãÔÆÊı¾İ
+			// è·å–ç‚¹äº‘æ•°æ®
 			nPtnNum = vtPointCloud.size();
 			ptPointCloud = vtPointCloud.data();
 
-			//¸´ÖÆµãÔÆ
+			//å¤åˆ¶ç‚¹äº‘
 			auto file = fopen(LINE_SCAN_POINT_CLOUD, "a+");
 			if (vtPointCloud.size() > 0)
 			{
@@ -892,32 +872,32 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 		{
 			pUnit->SwitchDHCamera(pUnit->m_nLineScanCameraNo + i, true, true, E_ACQUISITION_MODE_CONTINUE, E_CALL_BACK_MODE_SAVE_IMAGE);
 		}
-		pUnit->SwitchIO("LineScanLaser", true); //¿ªÏßÉ¨¼¤¹â
-		// Ö´ĞĞÏßÉ¨¶¯×÷
+		pUnit->SwitchIO("LineScanLaser", true); //å¼€çº¿æ‰«æ¿€å…‰
+		// æ‰§è¡Œçº¿æ‰«åŠ¨ä½œ
 		CHECK_BOOL_RETURN(m_vpLaserLineScreen[nRobotNo]->Start());
-		// ¹ØÏßÉ¨Ïà»ú¼°¼¤¹â
+		// å…³çº¿æ‰«ç›¸æœºåŠæ¿€å…‰
 		for (i = 0; i < LINESCAN_CAMERA_NUM; i++)
 		{
 			pUnit->SwitchDHCamera(pUnit->m_nLineScanCameraNo + i, false);
 		}
-		pUnit->SwitchIO("LineScanLaser", false); //¹ØÏßÉ¨¼¤¹â
-		// »ñÈ¡µãÔÆÊı¾İ
+		pUnit->SwitchIO("LineScanLaser", false); //å…³çº¿æ‰«æ¿€å…‰
+		// è·å–ç‚¹äº‘æ•°æ®
 		nPtnNum = 0;
 		ptPointCloud = m_vpLaserLineScreen[nRobotNo]->GetPointCloudData(nPtnNum);
 	}
 
 	if (nPtnNum == 0 || NULL == ptPointCloud)
 	{
-		XiMessageBox("»ñÈ¡µãÔÆÊı¾İÊ§°Ü");
+		XiMessageBox("è·å–ç‚¹äº‘æ•°æ®å¤±è´¥");
 		return false;
 	}
-	WriteLog("ÒÑ»ñÈ¡´ó³µµãÔÆÊı¾İ");
+	WriteLog("å·²è·å–å¤§è½¦ç‚¹äº‘æ•°æ®");
 
-	//µãÔÆ´¦Àí
+	//ç‚¹äº‘å¤„ç†
 	CHECK_BOOL_RETURN(CreateObject(m_tChoseWorkPieceType, pUnit, &m_pWeldAfterMeasure));
 	m_pWeldAfterMeasure->SetRecoParam();
 
-	// »Ø°²È«Î»ÖÃ
+	// å›å®‰å…¨ä½ç½®
 	//OnBnClickedButtonBackHome();
 	vector<CvPoint3D64f> vtPointCloud;
 	CvPoint3D64f* pPointCloud = NULL;
@@ -931,13 +911,13 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	CvPoint3D32f* pPointCloud3 = NULL;
 	int PointCloudSize3 = 0;
 
-	//ÏßÉ¨
+	//çº¿æ‰«
 	CString PointCloudFileName = GetCurLineScanPointCloudFile();
 	m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName, vtPointCloud);
 	pPointCloud = vtPointCloud.data();
 	PointCloudSize = vtPointCloud.size();
 	//CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
-	//if (false /*== g_bRemoveCloud*/)//¿ªÆôÈ¥µãÔÆ±³¾°¹¦ÄÜ
+	//if (false /*== g_bRemoveCloud*/)//å¼€å¯å»ç‚¹äº‘èƒŒæ™¯åŠŸèƒ½
 	//{
 	//	char ID2[] = "BackGround";
 	//	//char ID3[] = "BackGround1";
@@ -945,7 +925,7 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	//	//m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName_2, vtPointCloud2);
 	//	m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName, vtPointCloud2);
 	//	long long l2 = XI_clock();
-	//	WriteLog("¼ÓÔØÏßÉ¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+	//	WriteLog("åŠ è½½çº¿æ‰«ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 	//	for (int p2 = 0; p2 < vtPointCloud2.size(); p2++)
 	//	{
 	//		CvPoint3D32f tmp;
@@ -962,13 +942,13 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	//	PointCloudSize2 = vtPointCloud2_32.size();
 	//	//pPointCloud3 = (CvPoint3D32f*)vtPointCloud3_32.data();
 	//	//PointCloudSize3 = vtPointCloud3_32.size();
-	//	//if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("ÊÇ·ñÉ¨Ãè¿Õ¹¤×÷Ì¨È¥³ı¶àÓÚµãÔÆ£¨Ö´ĞĞÒ»´Î¼´¿É£©"))
+	//	//if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("æ˜¯å¦æ‰«æç©ºå·¥ä½œå°å»é™¤å¤šäºç‚¹äº‘ï¼ˆæ‰§è¡Œä¸€æ¬¡å³å¯ï¼‰"))
 	//	//{
 	//	   // CString directory = _T("Local_Files\\ExtLib\\Vision\\BackgroundCloud");
-	//	   // m_pWeldAfterMeasure->DelPngFile(directory);//Ã¿´ÎÈ¥±³¾°Ç°ÏÈÉ¾³ıÒÑ¾­ÓĞµÄ±³¾°ÎÄ¼ş
+	//	   // m_pWeldAfterMeasure->DelPngFile(directory);//æ¯æ¬¡å»èƒŒæ™¯å‰å…ˆåˆ é™¤å·²ç»æœ‰çš„èƒŒæ™¯æ–‡ä»¶
 	//	   // BackgroundCloudFileSave(ID2, pPointCloud2, PointCloudSize2, 1.0F, true);
 	//	   // BackgroundCloudFileSave(ID3, pPointCloud3, PointCloudSize3, 1.0F, true);
-	//	   // XiMessageBox("È¥µãÔÆ±³¾°´¦Àí³É¹¦");
+	//	   // XiMessageBox("å»ç‚¹äº‘èƒŒæ™¯å¤„ç†æˆåŠŸ");
 	//	   // return;
 	//	//}
 	//	l1 = XI_clock();
@@ -977,7 +957,7 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	//	l1 = XI_clock();
 	//	//PointCloudSize3 = BackgroundCloudRemove(ID3, pPointCloud3, PointCloudSize3, 10.0F, 5.0F) - 1;
 	//	l2 = XI_clock();
-	//	WriteLog("È¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+	//	WriteLog("å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 
 	//	PointCloudSize = PointCloudSize2 + PointCloudSize3;
 	//	for (int pn = 0; pn < PointCloudSize2; pn++)
@@ -995,15 +975,15 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	//	l1 = XI_clock();
 	//	pPointCloud = m_pWeldAfterMeasure->SaveRemoveCloud(pRobotDriver, FileName, vtPointCloud, PointCloudSize);
 	//	l2 = XI_clock();
-	//	WriteLog("±£´æÈ¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+	//	WriteLog("ä¿å­˜å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 	//}
-	if (false /*== g_bRemoveCloud*/)//¿ªÆôÈ¥µãÔÆ±³¾°¹¦ÄÜ
+	if (false /*== g_bRemoveCloud*/)//å¼€å¯å»ç‚¹äº‘èƒŒæ™¯åŠŸèƒ½
 	{
 		char ID[] = "BackGround";
 		long long l1 = XI_clock();
 		m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName, vtPointCloud2);
 		long long l2 = XI_clock();
-		WriteLog("¼ÓÔØÏßÉ¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		WriteLog("åŠ è½½çº¿æ‰«ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 		for (int p2 = 0; p2 < vtPointCloud2.size(); p2++)
 		{
 			CvPoint3D32f tmp;
@@ -1012,18 +992,18 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 		}
 		pPointCloud2 = (CvPoint3D32f*)vtPointCloud2_32.data();
 		PointCloudSize2 = vtPointCloud2_32.size();
-		if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("ÊÇ·ñÉ¨Ãè¿Õ¹¤×÷Ì¨È¥³ı¶àÓÚµãÔÆ£¨Ö´ĞĞÒ»´Î¼´¿É£©"))
+		if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("æ˜¯å¦æ‰«æç©ºå·¥ä½œå°å»é™¤å¤šäºç‚¹äº‘ï¼ˆæ‰§è¡Œä¸€æ¬¡å³å¯ï¼‰"))
 		{
 			CString directory = _T("Local_Files\\ExtLib\\Vision\\BackgroundCloud");
-			m_pWeldAfterMeasure->DelPngFile(directory);//Ã¿´ÎÈ¥±³¾°Ç°ÏÈÉ¾³ıÒÑ¾­ÓĞµÄ±³¾°ÎÄ¼ş
+			m_pWeldAfterMeasure->DelPngFile(directory);//æ¯æ¬¡å»èƒŒæ™¯å‰å…ˆåˆ é™¤å·²ç»æœ‰çš„èƒŒæ™¯æ–‡ä»¶
 			BackgroundCloudFileSave(ID, pPointCloud2, PointCloudSize2, 1.0F, true);
-			XiMessageBox("È¥µãÔÆ±³¾°´¦Àí³É¹¦");
+			XiMessageBox("å»ç‚¹äº‘èƒŒæ™¯å¤„ç†æˆåŠŸ");
 			return true;
 		}
 		l1 = XI_clock();
 		PointCloudSize2 = BackgroundCloudRemove(ID, pPointCloud2, PointCloudSize2, 10.0F, 5.0F) - 1;
 		l2 = XI_clock();
-		WriteLog("È¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		WriteLog("å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 		vtPointCloud.clear();
 		for (int pn = 0; pn < PointCloudSize2; pn++)
 		{
@@ -1037,28 +1017,28 @@ bool CAssemblyWeld::ScanLine(int nRobotNo)
 	if (false == m_pWeldAfterMeasure->PointCloudProcess(TRUE == m_nUseModel, pPointCloud, PointCloudSize))
 	{
 		DELETE_POINTER(m_pWeldAfterMeasure);
-		XiMessageBox("Ê¶±ğ´¦ÀíÊ§°Ü!");
+		XiMessageBox("è¯†åˆ«å¤„ç†å¤±è´¥!");
 		return false;
 	}
 	m_vpLaserLineScreen[nRobotNo]->ReleasePointCloud();
 
-	// ÏÔÊ¾´¦Àí½á¹û½»»¥Èí¼ş
+	// æ˜¾ç¤ºå¤„ç†ç»“æœäº¤äº’è½¯ä»¶
 	RunInteractiveWindow(pUnit->m_tContralUnit.strUnitName);
 
-	//×Ô„Ó·Ö½M
+	//è‡ªå‹•åˆ†çµ„
 	AutomaticGrouping(pUnit->m_tContralUnit.strUnitName);
 
-	//////º¸·ì½Ó¿Ú¸ü¸Ä
+	//////ç„Šç¼æ¥å£æ›´æ”¹
 	//SmallPartsConvertor convertor;
 	//convertor.inputWelds(".\\GraphData\\PointCloudIdentifyReaultAfter.txt");
 	//convertor.compute(m_nRobotHangPos);
-	////³õÊ¼»¯¹ØÁªÎÄ¼ş
-	//if (E_DIAPHRAGM == pRobotDriver->m_tChoseWorkPieceType) // ¸ô°åÀà²Ù×÷
+	////åˆå§‹åŒ–å…³è”æ–‡ä»¶
+	//if (E_DIAPHRAGM == pRobotDriver->m_tChoseWorkPieceType) // éš”æ¿ç±»æ“ä½œ
 	//{
 	//	((CDiaphragmWeld*)m_pWeldAfterMeasure)->InitWorkPieceReleveInfo(pRobotDriver);
 	//}
 	DELETE_POINTER(m_pWeldAfterMeasure);
-	XiMessageBox("½Ó¿Ú¸üĞÂÍê³É");
+	XiMessageBox("æ¥å£æ›´æ–°å®Œæˆ");
 	return true;
 }
 
@@ -1071,7 +1051,7 @@ bool CAssemblyWeld::ScanLineForVzenseCam(int nRobotNo)
 	
 	if (false == GetVzensePointCloud(nRobotNo, tCamParam, vtPointCloud))
 	{
-		XiMessageBox("²É¼¯µãÔÆÊı¾İÊ§°Ü");
+		XiMessageBox("é‡‡é›†ç‚¹äº‘æ•°æ®å¤±è´¥");
 		return false;
 	}
 	
@@ -1079,43 +1059,43 @@ bool CAssemblyWeld::ScanLineForVzenseCam(int nRobotNo)
 	CvPoint3D64f* ptPointCloud = vtPointCloud.data();
 	if (nPtnNum == 0 || NULL == ptPointCloud)
 	{
-		XiMessageBox("»ñÈ¡µãÔÆÊı¾İÊ§°Ü");
+		XiMessageBox("è·å–ç‚¹äº‘æ•°æ®å¤±è´¥");
 		return false;
 	}
-	WriteLog("ÒÑ»ñÈ¡´ó³µµãÔÆÊı¾İ");
+	WriteLog("å·²è·å–å¤§è½¦ç‚¹äº‘æ•°æ®");
 
-	//µãÔÆ´¦Àí
+	//ç‚¹äº‘å¤„ç†
 	CHECK_BOOL_RETURN(CreateObject(m_tChoseWorkPieceType, pUnit, &m_pWeldAfterMeasure));
 	m_pWeldAfterMeasure->SetRecoParam();
 
-	// »Ø°²È«Î»ÖÃ
+	// å›å®‰å…¨ä½ç½®
 	//OnBnClickedButtonBackHome();
 
 	if (false == m_pWeldAfterMeasure->PointCloudProcess(TRUE == m_nUseModel, ptPointCloud, nPtnNum))
 	{
 		DELETE_POINTER(m_pWeldAfterMeasure);
-		XiMessageBox("Ê¶±ğ´¦ÀíÊ§°Ü!");
+		XiMessageBox("è¯†åˆ«å¤„ç†å¤±è´¥!");
 		return false;
 	}
 	m_vpLaserLineScreen[nRobotNo]->ReleasePointCloud();
 
-	// ÏÔÊ¾´¦Àí½á¹û½»»¥Èí¼ş
+	// æ˜¾ç¤ºå¤„ç†ç»“æœäº¤äº’è½¯ä»¶
 	RunInteractiveWindow(pUnit->m_tContralUnit.strUnitName);
 
-	//×Ô„Ó·Ö½M
+	//è‡ªå‹•åˆ†çµ„
 	AutomaticGrouping(pUnit->m_tContralUnit.strUnitName);
 
-	//////º¸·ì½Ó¿Ú¸ü¸Ä
+	//////ç„Šç¼æ¥å£æ›´æ”¹
 	//SmallPartsConvertor convertor;
 	//convertor.inputWelds(".\\GraphData\\PointCloudIdentifyReaultAfter.txt");
 	//convertor.compute(m_nRobotHangPos);
-	////³õÊ¼»¯¹ØÁªÎÄ¼ş
-	//if (E_DIAPHRAGM == pRobotDriver->m_tChoseWorkPieceType) // ¸ô°åÀà²Ù×÷
+	////åˆå§‹åŒ–å…³è”æ–‡ä»¶
+	//if (E_DIAPHRAGM == pRobotDriver->m_tChoseWorkPieceType) // éš”æ¿ç±»æ“ä½œ
 	//{
 	//	((CDiaphragmWeld*)m_pWeldAfterMeasure)->InitWorkPieceReleveInfo(pRobotDriver);
 	//}
 	DELETE_POINTER(m_pWeldAfterMeasure);
-	XiMessageBox("½Ó¿Ú¸üĞÂÍê³É");
+	XiMessageBox("æ¥å£æ›´æ–°å®Œæˆ");
 	return true;
 }
 
@@ -1133,34 +1113,34 @@ bool CAssemblyWeld::GetVzensePointCloud(int nRobotNo, T_CAMREA_PARAM tCamParam, 
 	std::string sPointCloudFile = strPointCloudFile;
 	std::string sPointCloudFileNew = strPointCloudFileNew;
 
-	// Î¬¸Ğ3DÏà»ú²É¼¯µãÔÆ
+	// ç»´æ„Ÿ3Dç›¸æœºé‡‡é›†ç‚¹äº‘
 	WeiGanCapture Vzense;
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºFlyingPixelFilterSet");
-	Vzense.FlyingPixelFilterSet(Vzense.status, 0, true, 40); // ·ÉµãÏû³ıÂË²¨ 40
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šFlyingPixelFilterSet");
+	Vzense.FlyingPixelFilterSet(Vzense.status, 0, true, 40); // é£ç‚¹æ¶ˆé™¤æ»¤æ³¢ 40
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºTOFExposureSet");
-	Vzense.TOFExposureSet(Vzense.status, 0, VzExposureControlMode_Manual, 1000); // ÆØ¹â 1000
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šTOFExposureSet");
+	Vzense.TOFExposureSet(Vzense.status, 0, VzExposureControlMode_Manual, 1000); // æ›å…‰ 1000
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºConfidenceFilterSet");
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šConfidenceFilterSet");
 	Vzense.ConfidenceFilterSet(Vzense.status, 0, false);
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºCloudPoint");
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šCloudPoint");
 	Vzense.CloudPoint(Vzense.status, 0, sPointCloudFile);
 	Sleep(2000);
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºCameraClose");
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šCameraClose");
 	Vzense.CameraClose(Vzense.status, 0);
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	pRobotDriver->m_cLog->Write("Î¬¸ĞÏà»ú²É¼¯µãÔÆ£ºCameraApiShutdown");
+	pRobotDriver->m_cLog->Write("ç»´æ„Ÿç›¸æœºé‡‡é›†ç‚¹äº‘ï¼šCameraApiShutdown");
 	Vzense.CameraApiShutdown(Vzense.status);
 	CHECK_BOOL_RETURN((VzReturnStatus::VzRetOK == Vzense.status));
 
-	// ×ø±êÏà»ú×ø±êÏµµ½»úÆ÷ÈËÊÀ½ç×ø±êÏµ×ª»»  ²¢°´ĞÂ¸ñÊ½±£´æ
+	// åæ ‡ç›¸æœºåæ ‡ç³»åˆ°æœºå™¨äººä¸–ç•Œåæ ‡ç³»è½¬æ¢  å¹¶æŒ‰æ–°æ ¼å¼ä¿å­˜
 	FILE *pf = fopen(sPointCloudFile.c_str(), "r");
 	FILE *pfNew = fopen(sPointCloudFileNew.c_str(), "w");
 	if (NULL == pf) return false;
@@ -1171,7 +1151,7 @@ bool CAssemblyWeld::GetVzensePointCloud(int nRobotNo, T_CAMREA_PARAM tCamParam, 
 	{
 		if (fabs(tPtn.x) < 0.0001 && fabs(tPtn.y) < 0.0001 && fabs(tPtn.z) < 0.0001)
 		{
-			continue; // È¥³ıÎŞĞ§Êı¾İ
+			continue; // å»é™¤æ— æ•ˆæ•°æ®
 		}
 		tPtn = CoordTrans::TransPoint(tCamParam.tCameraTransfomPara.dMatrix, tPtn);
 		fprintf(pfNew, "%d%11.3lf%11.3lf%11.3lf\n", nPtnNo++, tPtn.x, tPtn.y, tPtn.z);
@@ -1187,44 +1167,44 @@ bool CAssemblyWeld::CreateObject(E_WORKPIECE_TYPE ePartType, CUnit* pUnit, WAM::
 	DELETE_POINTER(*pWeldAfterMeasure);
 	switch (ePartType)
 	{
-	case E_DIAPHRAGM: // ¸ô°å
+	case E_DIAPHRAGM: // éš”æ¿
 		*pWeldAfterMeasure = new CDiaphragmWeld(pUnit, ePartType);
 		break;
-	case E_LINELLAE: // ÏßÌõ 
+	case E_LINELLAE: // çº¿æ¡ 
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case SMALL_PIECE: // Ğ¡É¢¼ş(ÏÈ²âºóº¸)
+	case SMALL_PIECE: // å°æ•£ä»¶(å…ˆæµ‹åç„Š)
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case STIFFEN_PLATE: // ¼Ó¾¢°å(µõ³µÁº)
+	case STIFFEN_PLATE: // åŠ åŠ²æ¿(åŠè½¦æ¢)
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case E_PURLIN_HANGER: // éİÍĞ
+	case E_PURLIN_HANGER: // æª©æ‰˜
 		//*pWeldAfterMeasure = new PurlinHanger(pRobotDriver, ePartType);
 		break;
-	case E_END_PLATE: // ¶Ë°å ÎİÃæÁº
+	case E_END_PLATE: // ç«¯æ¿ å±‹é¢æ¢
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case E_CORBEL: // Å£ÍÈ
+	case E_CORBEL: // ç‰›è…¿
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case E_CAKE: // ¼ÑÄ¾Ë¹µç³§
+	case E_CAKE: // ä½³æœ¨æ–¯ç”µå‚
 		*pWeldAfterMeasure = new GenericWeld(pUnit, ePartType);
 		break;
-	case E_BEVEL: // ÆÂ¿Ú
+	case E_BEVEL: // å¡å£
 		*pWeldAfterMeasure = new class::GrooveWeld(pUnit, ePartType);
 		break;	
-	case E_SINGLE_BOARD: // µ¥°åµ¥½î
+	case E_SINGLE_BOARD: // å•æ¿å•ç­‹
 			*pWeldAfterMeasure = new class::SingleBoard(pUnit, ePartType);
 			break;
-	case E_SCAN_WELD_LINE: // È«É¨Ãè²âÁ¿
+	case E_SCAN_WELD_LINE: // å…¨æ‰«ææµ‹é‡
 		*pWeldAfterMeasure = new class::ScanWeldLine(pUnit, ePartType);
 		break;
 	case E_FLANGE_GENERIC:
 		*pWeldAfterMeasure = new class::GenericWeld(pUnit, ePartType);
 		break;
 	default:
-		XiMessageBox("¹¤¼şÀàĞÍ´íÎó£¡"); return false;
+		XiMessageBox("å·¥ä»¶ç±»å‹é”™è¯¯ï¼"); return false;
 		return false;
 	}
 
@@ -1235,18 +1215,18 @@ bool CAssemblyWeld::WeldAfterMeasureMultiMachine()
 {
 	if (g_bAutoGroupingMark)
 	{
-		// ¼ÓÔØ×Ô¶¯·Ö×éÊı¾İ
+		// åŠ è½½è‡ªåŠ¨åˆ†ç»„æ•°æ®
 		CString strFileAuto = OUTPUT_PATH + m_vpUnit[0]->m_tContralUnit.strUnitName + "\\" + RECOGNITION_FOLDER + "planned_welds.txt";
 		LoadGroupingResult(strFileAuto);
 	}
 	else
 	{
-		// ÊÖ¶¯·Ö×éÊı¾İ
+		// æ‰‹åŠ¨åˆ†ç»„æ•°æ®
 		LoadCloudProcessResultMultiMachine(m_vpUnit[0]->m_tContralUnit.strUnitName);
 	}
-	// ÅĞ¶ÏÈÎÎñÊıÁ¿
-	vector<CWinThread* > vpcThread;//Ïß³Ì×´Ì¬
-	vector<int> vnWorkRobot;// ¹¤×÷µ¥Ôª	
+	// åˆ¤æ–­ä»»åŠ¡æ•°é‡
+	vector<CWinThread* > vpcThread;//çº¿ç¨‹çŠ¶æ€
+	vector<int> vnWorkRobot;// å·¥ä½œå•å…ƒ	
 	int i = 0, n = 0;
 	for (i = 0; i < m_vvvtWeldSeamInfo.size(); i++)
 	{
@@ -1260,7 +1240,7 @@ bool CAssemblyWeld::WeldAfterMeasureMultiMachine()
 				vnWorkRobot.push_back(n);
 			}
 		}
-		if (vnWorkRobot.size() > 1)// ¶à»ú¹¤×÷
+		if (vnWorkRobot.size() > 1)// å¤šæœºå·¥ä½œ
 		{
 			for (n = 0; n < vnWorkRobot.size(); n++)
 			{
@@ -1287,7 +1267,7 @@ bool CAssemblyWeld::WeldAfterMeasureMultiMachine()
 			WaitForSingleObject(vpcThread[nWorkNo]->m_hThread, INFINITE);
 		}
 	}
-	XiMessageBox("º¸½ÓÍê³É");
+	XiMessageBox("ç„Šæ¥å®Œæˆ");
 	return true;
 }
 UINT CAssemblyWeld::ThreadWeldAfterMeasureMultiMachine(void* pParam)
@@ -1298,7 +1278,7 @@ UINT CAssemblyWeld::ThreadWeldAfterMeasureMultiMachine(void* pParam)
 	int nCurGroupNo = pObj->nGroupNo;
 	pObj->bRobotThreadStatus = true;
 	bool bRst = pObj->cIncisePlanePart->WorkWeldAfterMeasure(pObj->pRobotCtrl->m_nRobotNo, nCurGroupNo);
-	m_lWorkTime += (XI_clock() - lTimeS); // ¹¤×÷Ê±¼äÖĞµÄ²âÁ¿º¸½ÓÁ÷³ÌÊ±¼ä
+	m_lWorkTime += (XI_clock() - lTimeS); // å·¥ä½œæ—¶é—´ä¸­çš„æµ‹é‡ç„Šæ¥æµç¨‹æ—¶é—´
 	pObj->bRobotThreadStatus = false;
 	return 0;
 }
@@ -1308,14 +1288,14 @@ UINT CAssemblyWeld::ThreadWeldAfterMeasure(void *pParam)
 	CAssemblyWeld *pObj = (CAssemblyWeld*)pParam;
 	if (true == pObj->m_bAutoWeldWorking)
 	{
-		XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜÖØ¸´¿ªÆô!");
+		XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½é‡å¤å¼€å¯!");
 		return -1;
 	}
 	long long lTimeS = XI_clock();
 	pObj->m_bAutoWeldWorking = true;
 	int nCurGroupNo = 0;
 	bool bRst = false;
-	if (54 == pObj->m_vpRobotDriver[0]->m_nExternalAxleType) // ¹úº¸ÆÂ¿Úº¸½Óµ÷¶ÈÁ÷³Ì
+	if (54 == pObj->m_vpRobotDriver[0]->m_nExternalAxleType) // å›½ç„Šå¡å£ç„Šæ¥è°ƒåº¦æµç¨‹
 	{
 		bRst = pObj->WeldAfterMeasureMultiMachine_G();
 	}
@@ -1325,7 +1305,7 @@ UINT CAssemblyWeld::ThreadWeldAfterMeasure(void *pParam)
 	}
 	pObj->m_bAutoWeldWorking = false;
 	//m_lWorkTime += (XI_clock() - lTimeS); 
-	// ¹¤×÷Ê±¼äÖĞµÄ²âÁ¿º¸½ÓÁ÷³ÌÊ±¼ä
+	// å·¥ä½œæ—¶é—´ä¸­çš„æµ‹é‡ç„Šæ¥æµç¨‹æ—¶é—´
 	//CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
 	//pStatisticalData->UpdateWorkTime((XI_clock() - lTimeS));
 	return 0;
@@ -1348,7 +1328,7 @@ int CAssemblyWeld::CheckWeldIO(void* pParam)
 		{
 			pObj->m_vpUnit[0]->UnitEmgStop();
 			//pObj->m_bAutoWeldWorking = false;
-			XiMessageBoxOk("±£»¤ÆøÒì³££¬Í£Ö¹º¸½Ó£¡");
+			XiMessageBoxOk("ä¿æŠ¤æ°”å¼‚å¸¸ï¼Œåœæ­¢ç„Šæ¥ï¼");
 			//return 0;
 			//exit(0);
 		}
@@ -1363,8 +1343,8 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 	CString sHintInfo;
 	CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 	CUnit* pUnit = m_vpUnit[nRobotNo];
-	// ´´½¨²¢³õÊ¼»¯¼Ó¾¢°åº¸½ÓÊµÀı
-	WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ÎªÁË²»ĞŞÒÔÏÂ±äÁ¿Ãû
+	// åˆ›å»ºå¹¶åˆå§‹åŒ–åŠ åŠ²æ¿ç„Šæ¥å®ä¾‹
+	WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ä¸ºäº†ä¸ä¿®ä»¥ä¸‹å˜é‡å
 	CHECK_BOOL_RETURN(CreateObject(m_tChoseWorkPieceType, m_vpUnit[nRobotNo], &pWeldAfterMeasure));
 	pWeldAfterMeasure->SetRecoParam();
 	pWeldAfterMeasure->SetHardware(m_vpScanInit[nRobotNo]);
@@ -1373,25 +1353,25 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 	pWeldAfterMeasure->m_bIsLocalDebug = GetLocalDebugMark() == TRUE;
 	pWeldAfterMeasure->LoadPauseInfo();
 	pWeldAfterMeasure->m_ptUnit->m_bWeldAfterMeasureMoveExAxis = (E_SCAN_WELD_LINE == m_tChoseWorkPieceType) ? true : false;
-	// µãÔÆ´¦Àí
-	//ÒÑĞŞ¸Ä
-	SetHintInfo(XUI::Languge::GetInstance().translate("µãÔÆ´¦ÀíÖĞ¡­¡­"));
-	//SetHintInfo("µãÔÆ´¦ÀíÖĞ¡­¡­");
+	// ç‚¹äº‘å¤„ç†
+	//å·²ä¿®æ”¹
+	SetHintInfo(XUI::Languge::GetInstance().translate("ç‚¹äº‘å¤„ç†ä¸­â€¦â€¦"));
+	//SetHintInfo("ç‚¹äº‘å¤„ç†ä¸­â€¦â€¦");
 	pWeldAfterMeasure->m_vtWeldSeamData = m_vvvtWeldSeamData.at(nCurGroupNo).at(nRobotNo);
 	pWeldAfterMeasure->m_vtWeldSeamInfo = m_vvvtWeldSeamInfo.at(nCurGroupNo).at(nRobotNo);
-	// ×ª»»¾ØÕóÎ»ÖÃÌí¼Ó // !!!!µ¥»ú¶à¼¶ĞèÒªÓÅ»¯ µ¥»úÁúÃÅ
-	if (g_bGantryEnableMark) // ÁúÃÅÊ¹ÓÃ
+	// è½¬æ¢çŸ©é˜µä½ç½®æ·»åŠ  // !!!!å•æœºå¤šçº§éœ€è¦ä¼˜åŒ– å•æœºé¾™é—¨
+	if (g_bGantryEnableMark) // é¾™é—¨ä½¿ç”¨
 	{
 		pWeldAfterMeasure->WeldSeamTransCoor_Gantry2Robot(pWeldAfterMeasure->m_vtWeldSeamData, pWeldAfterMeasure->m_vtWeldSeamInfo);
 	}
-	// º¸·ìÅÅĞò·Ö×é
-	//ÒÑĞŞ¸Ä
-	SetHintInfo(XUI::Languge::GetInstance().translate("º¸·ìĞÅÏ¢ÅÅĞò·Ö×é¡­¡­"));//"º¸·ìĞÅÏ¢ÅÅĞò·Ö×é¡­¡­"
-	//SetHintInfo("º¸·ìĞÅÏ¢ÅÅĞò·Ö×é¡­¡­");
+	// ç„Šç¼æ’åºåˆ†ç»„
+	//å·²ä¿®æ”¹
+	SetHintInfo(XUI::Languge::GetInstance().translate("ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„â€¦â€¦"));//"ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„â€¦â€¦"
+	//SetHintInfo("ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„â€¦â€¦");
 	int nWeldGropuNum = 0;
 	CHECK_BOOL_RETURN(pWeldAfterMeasure->WeldSeamGrouping(nWeldGropuNum));
 
-	// ¸ú×ÙÁÙÊ±Ìí¼Ó£º¸ú×Ù´Ó²âÁ¿Ê¹ÓÃ¸ú×ÙÏà»ú ¼ÇÂ¼Ô­²âÁ¿Ïà»úºÅ
+	// è·Ÿè¸ªä¸´æ—¶æ·»åŠ ï¼šè·Ÿè¸ªä»æµ‹é‡ä½¿ç”¨è·Ÿè¸ªç›¸æœº è®°å½•åŸæµ‹é‡ç›¸æœºå·
 	//pUnit->LoadCameraParam(pUnit->m_tContralUnit.strUnitName, pUnit->m_vtCameraPara);
 	CString strFileName = DATA_PATH + pUnit->m_tContralUnit.strUnitName + CAMERA_PARAM_INI;
 	COPini opini;
@@ -1403,7 +1383,7 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 	int nRealMeasureCamNo = pUnit->m_nMeasureCameraNo;
 	bool bChange = false;
 	bool bWeld = false;
-	// Ñ­»·²âÁ¿ºÍº¸½ÓÃ¿¸öº¸·ì×é
+	// å¾ªç¯æµ‹é‡å’Œç„Šæ¥æ¯ä¸ªç„Šç¼ç»„
 	for (int nGroupNo = pWeldAfterMeasure->m_nPauseGroupNo; nGroupNo < nWeldGropuNum; nGroupNo++)
 	{
 		if (pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.nStartWrapType == 10)
@@ -1419,17 +1399,17 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			pWeldAfterMeasure->m_bIsLocalDebug = GetLocalDebugMark() == TRUE;
 			pWeldAfterMeasure->LoadPauseInfo();
 			pWeldAfterMeasure->m_ptUnit->m_bWeldAfterMeasureMoveExAxis = (E_SCAN_WELD_LINE == m_tChoseWorkPieceType) ? true : false;
-			// µãÔÆ´¦Àí
-			SetHintInfo("µãÔÆ´¦ÀíÖĞ¡­¡­");
+			// ç‚¹äº‘å¤„ç†
+			SetHintInfo("ç‚¹äº‘å¤„ç†ä¸­â€¦â€¦");
 			pWeldAfterMeasure->m_vtWeldSeamData = m_vvvtWeldSeamData.at(nCurGroupNo).at(nRobotNo);
 			pWeldAfterMeasure->m_vtWeldSeamInfo = m_vvvtWeldSeamInfo.at(nCurGroupNo).at(nRobotNo);
-			// ×ª»»¾ØÕóÎ»ÖÃÌí¼Ó // !!!!µ¥»ú¶à¼¶ĞèÒªÓÅ»¯ µ¥»úÁúÃÅ
-			if (g_bGantryEnableMark) // ÁúÃÅÊ¹ÓÃ
+			// è½¬æ¢çŸ©é˜µä½ç½®æ·»åŠ  // !!!!å•æœºå¤šçº§éœ€è¦ä¼˜åŒ– å•æœºé¾™é—¨
+			if (g_bGantryEnableMark) // é¾™é—¨ä½¿ç”¨
 			{
 				pWeldAfterMeasure->WeldSeamTransCoor_Gantry2Robot(pWeldAfterMeasure->m_vtWeldSeamData, pWeldAfterMeasure->m_vtWeldSeamInfo);
 			}
-			// º¸·ìÅÅĞò·Ö×é
-			SetHintInfo("º¸·ìĞÅÏ¢ÅÅĞò·Ö×é¡­¡­");
+			// ç„Šç¼æ’åºåˆ†ç»„
+			SetHintInfo("ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„â€¦â€¦");
 			nWeldGropuNum = 0;
 			CHECK_BOOL_RETURN(pWeldAfterMeasure->WeldSeamGrouping(nWeldGropuNum));
 		}
@@ -1446,31 +1426,31 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			pWeldAfterMeasure->m_bIsLocalDebug = GetLocalDebugMark() == TRUE;
 			pWeldAfterMeasure->LoadPauseInfo();
 			pWeldAfterMeasure->m_ptUnit->m_bWeldAfterMeasureMoveExAxis = (E_SCAN_WELD_LINE == m_tChoseWorkPieceType) ? true : false;
-			// µãÔÆ´¦Àí
-			SetHintInfo("µãÔÆ´¦ÀíÖĞ¡­¡­");
+			// ç‚¹äº‘å¤„ç†
+			SetHintInfo("ç‚¹äº‘å¤„ç†ä¸­â€¦â€¦");
 			pWeldAfterMeasure->m_vtWeldSeamData = m_vvvtWeldSeamData.at(nCurGroupNo).at(nRobotNo);
 			pWeldAfterMeasure->m_vtWeldSeamInfo = m_vvvtWeldSeamInfo.at(nCurGroupNo).at(nRobotNo);
-			// ×ª»»¾ØÕóÎ»ÖÃÌí¼Ó // !!!!µ¥»ú¶à¼¶ĞèÒªÓÅ»¯ µ¥»úÁúÃÅ
-			if (g_bGantryEnableMark) // ÁúÃÅÊ¹ÓÃ
+			// è½¬æ¢çŸ©é˜µä½ç½®æ·»åŠ  // !!!!å•æœºå¤šçº§éœ€è¦ä¼˜åŒ– å•æœºé¾™é—¨
+			if (g_bGantryEnableMark) // é¾™é—¨ä½¿ç”¨
 			{
 				pWeldAfterMeasure->WeldSeamTransCoor_Gantry2Robot(pWeldAfterMeasure->m_vtWeldSeamData, pWeldAfterMeasure->m_vtWeldSeamInfo);
 			}
-			// º¸·ìÅÅĞò·Ö×é
-			SetHintInfo("º¸·ìĞÅÏ¢ÅÅĞò·Ö×é¡­¡­");
+			// ç„Šç¼æ’åºåˆ†ç»„
+			SetHintInfo("ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„â€¦â€¦");
 			nWeldGropuNum = 0;
 			CHECK_BOOL_RETURN(pWeldAfterMeasure->WeldSeamGrouping(nWeldGropuNum));
 		}
 		pWeldAfterMeasure->m_nGroupNo = nGroupNo;
 		CString sInfo;
-		sInfo.Format("º¸½ÓµÚ%d×éº¸·ì£¿¹²%d×é", nGroupNo + 1, nWeldGropuNum);
+		sInfo.Format("ç„Šæ¥ç¬¬%dç»„ç„Šç¼ï¼Ÿå…±%dç»„", nGroupNo + 1, nWeldGropuNum);
 		int nRst = 0;
 
 		CString cStrTitle = XUI::Languge::GetInstance().translate(
-			"{0}×éºÅÊä(1-{1})¹Ø±Õ½øÈëÏÂÒ»×éÎŞĞ§ÍË³ö",
+			"{0}ç»„å·è¾“(1-{1})å…³é—­è¿›å…¥ä¸‹ä¸€ç»„æ— æ•ˆé€€å‡º",
 			XUI::Languge::GetInstance().translate(pRobotDriver->m_strRobotName),
 			nWeldGropuNum);
-		std::vector<CString> vsInputName(1, "º¸½Ó×éºÅ:");
-		vsInputName.push_back("º¸½Ó°åºñ:");
+		std::vector<CString> vsInputName(1, "ç„Šæ¥ç»„å·:");
+		vsInputName.push_back("ç„Šæ¥æ¿åš:");
 		std::vector<double> vnInputData(1, nGroupNo + 1);
 		double dThick = 10.0;
 		CString str;
@@ -1481,7 +1461,7 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 		opini.ReadString("BoardThick", &dThick);
 		vnInputData.push_back(dThick);
 
-		// ĞŞ¸ÄÊ¶±ğ²ÎÊı´°¿Ú
+		// ä¿®æ”¹è¯†åˆ«å‚æ•°çª—å£
 		ParamInput cParamDlg(cStrTitle, vsInputName, &vnInputData);
 		if (TRUE == m_bNaturalPop)
 		{
@@ -1498,15 +1478,15 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			}
 			else
 			{
-				//ÒÑĞŞ¸Ä
-				//sHintInfo.Format("Ìø¹ıµÚ%d×éº¸·ìº¸½Ó", nGroupNo + 1);
-				sHintInfo = XUI::Languge::GetInstance().translate("Ìø¹ıµÚ{0}×éº¸·ìº¸½Ó", nGroupNo + 1);
+				//å·²ä¿®æ”¹
+				//sHintInfo.Format("è·³è¿‡ç¬¬%dç»„ç„Šç¼ç„Šæ¥", nGroupNo + 1);
+				sHintInfo = XUI::Languge::GetInstance().translate("è·³è¿‡ç¬¬{0}ç»„ç„Šç¼ç„Šæ¥", nGroupNo + 1);
 				continue;
 			}
 		}
-		//ÒÑĞŞ¸Ä
-		//sHintInfo.Format("¼ÆËãµÚ%d×éº¸·ì²âÁ¿¹ì¼£¡­¡­", nGroupNo + 1);
-		sHintInfo = XUI::Languge::GetInstance().translate("¼ÆËãµÚ{0}×éº¸·ì²âÁ¿¹ì¼£¡­¡­", nGroupNo + 1);
+		//å·²ä¿®æ”¹
+		//sHintInfo.Format("è®¡ç®—ç¬¬%dç»„ç„Šç¼æµ‹é‡è½¨è¿¹â€¦â€¦", nGroupNo + 1);
+		sHintInfo = XUI::Languge::GetInstance().translate("è®¡ç®—ç¬¬{0}ç»„ç„Šç¼æµ‹é‡è½¨è¿¹â€¦â€¦", nGroupNo + 1);
 		SetHintInfo(sHintInfo);
 		vector<T_ROBOT_COORS> vtMeasureCoord;
 		vector<T_ANGLE_PULSE> vtMeasurePulse;
@@ -1514,7 +1494,7 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 		double dExAxlePos = 0.0;
 		double dExAxlePos_y = 0.0;
 
-		// ¸ú×ÙÁÙÊ±Ìí¼Ó£º¸ú×Ù´Ó²âÁ¿Ê¹ÓÃ¸ú×ÙÏà»ú ¼ÇÂ¼Ô­²âÁ¿Ïà»úºÅ
+		// è·Ÿè¸ªä¸´æ—¶æ·»åŠ ï¼šè·Ÿè¸ªä»æµ‹é‡ä½¿ç”¨è·Ÿè¸ªç›¸æœº è®°å½•åŸæµ‹é‡ç›¸æœºå·
 		if (4 == pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.nStartWrapType)
 		{
 			pUnit->m_nMeasureCameraNo = pUnit->m_nTrackCameraNo;
@@ -1524,27 +1504,27 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			pUnit->m_nMeasureCameraNo = nRealMeasureCamNo;
 		}
 
-		// ²âÁ¿Êı¾İ²âÁ¿ÔË¶¯
-		//ÒÑĞŞ¸Ä
-		//sHintInfo.Format("XiRobot %s µÚ%d×éº¸·ì²âÁ¿¹ì¼£¼ÆËãÖĞ¡­¡­ ½ø¶È£º%d×é/¹²%d×é", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
-		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}µÚ{1}×éº¸·ì²âÁ¿¹ì¼£¼ÆËãÖĞ¡­¡­½ø¶È:{2}×é/¹²{3}×é", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		// æµ‹é‡æ•°æ®æµ‹é‡è¿åŠ¨
+		//å·²ä¿®æ”¹
+		//sHintInfo.Format("XiRobot %s ç¬¬%dç»„ç„Šç¼æµ‹é‡è½¨è¿¹è®¡ç®—ä¸­â€¦â€¦ è¿›åº¦ï¼š%dç»„/å…±%dç»„", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}ç¬¬{1}ç»„ç„Šç¼æµ‹é‡è½¨è¿¹è®¡ç®—ä¸­â€¦â€¦è¿›åº¦:{2}ç»„/å…±{3}ç»„", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 		SetHintInfo(sHintInfo);
 		pWeldAfterMeasure->m_vvtWeldSeamGroupAdjust = pWeldAfterMeasure->m_vvtCowWeldSeamGroupAdjust;
-		// »úÆ÷ÈË»ù×ùÖĞĞÄµ½´ó³µÖĞĞÄ¾àÀë
+		// æœºå™¨äººåŸºåº§ä¸­å¿ƒåˆ°å¤§è½¦ä¸­å¿ƒè·ç¦»
 		double dSafeHeight = 0.0;
 		CHECK_BOOL_RETURN(pWeldAfterMeasure->CalcMeasureTrack(nGroupNo, vtMeasureCoord, vtMeasurePulse, vnMeasureType, dExAxlePos, dSafeHeight));
-		if (g_bGantryEnableMark) // ÁúÃÅÊ¹ÓÃ
+		if (g_bGantryEnableMark) // é¾™é—¨ä½¿ç”¨
 		{
-			// ÁúÃÅÉè±¸ÒÆ¶¯ÁúÃÅÖá£¬ÒÆ¶¯¹ìµÀ×ø±êYºÍ»úĞµ±ÛZ1
-			//=======================¼ÆËã´ó³µÎ»ÖÃ=======================
+			// é¾™é—¨è®¾å¤‡ç§»åŠ¨é¾™é—¨è½´ï¼Œç§»åŠ¨è½¨é“åæ ‡Yå’Œæœºæ¢°è‡‚Z1
+			//=======================è®¡ç®—å¤§è½¦ä½ç½®=======================
 			CvPoint3D64f CarPoint;
-			CarPoint.x = pUnit->m_dExAxisXPos;	//¹ìµÀ·½ÏòºÍ»úÆ÷ÈËµÄx·½ÏòÆ½ĞĞ
+			CarPoint.x = pUnit->m_dExAxisXPos;	//è½¨é“æ–¹å‘å’Œæœºå™¨äººçš„xæ–¹å‘å¹³è¡Œ
 			CarPoint.y = 0;
 			CarPoint.z = 0;
 			CvPoint3D64f RealCarPoint = pUnit->TransCoor_Robot2Gantry(CarPoint);
-			double dTrackPos = RealCarPoint.y;	//¹ìµÀ·½ÏòÊÇÊÀ½ç×ø±êÏµµÄy·½Ïò
+			double dTrackPos = RealCarPoint.y;	//è½¨é“æ–¹å‘æ˜¯ä¸–ç•Œåæ ‡ç³»çš„yæ–¹å‘
 			dTrackPos += pUnit->m_dGantryRobotOriginDis;
-			if (!pUnit->m_bSingleRobotWork)// ¶à»ú
+			if (!pUnit->m_bSingleRobotWork)// å¤šæœº
 			{
 				dTrackPos = pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo].at(0).tAtrribute.dGroupTrackPos +
 					pUnit->m_dRobotBaseToGantryCtrDis;
@@ -1555,15 +1535,15 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			m_vpUnit[0]->GetRobotCtrl()->m_pvpMotorDriver->at(0)->CheckAxisDone();
 		}
 
-		////// ²âÁ¿¹ì¼£Åö×²¼ì²â
-		////sHintInfo.Format("µÚ%d×é ²âÁ¿Åö×²¼ì²âÖĞ¡­¡­", nGroupNo + 1);
+		////// æµ‹é‡è½¨è¿¹ç¢°æ’æ£€æµ‹
+		////sHintInfo.Format("ç¬¬%dç»„ æµ‹é‡ç¢°æ’æ£€æµ‹ä¸­â€¦â€¦", nGroupNo + 1);
 		////SetHintInfo(sHintInfo);
 		////pWeldAfterMeasure->GenerateFilePLYPlane(dExAxlePos);
 		////pWeldAfterMeasure->SetCheckCollidePlane();
 		////bool bIsCollide = pWeldAfterMeasure->CheckIsCollide(vtMeasureCoord, dExAxlePos, false);
-		////sHintInfo.Format("µÚ%d×é ²âÁ¿Åö×²¼ì²â½áÊø [%s]", nGroupNo + 1, bIsCollide ? "ÓĞ¸ÉÉæ" : "ÎŞ¸ÉÉæ");
+		////sHintInfo.Format("ç¬¬%dç»„ æµ‹é‡ç¢°æ’æ£€æµ‹ç»“æŸ [%s]", nGroupNo + 1, bIsCollide ? "æœ‰å¹²æ¶‰" : "æ— å¹²æ¶‰");
 		////SetHintInfo(sHintInfo);
-		//continue; // ÁÙÊ±µ÷ÊÔÊ¹ÓÃ Ìø¹ı²âÁ¿¹ı¹ì¼£ÒÔºóµÄÁ÷³Ì
+		//continue; // ä¸´æ—¶è°ƒè¯•ä½¿ç”¨ è·³è¿‡æµ‹é‡è¿‡è½¨è¿¹ä»¥åçš„æµç¨‹
 
 		long long dCalceEndtime;
 		dCalceEndtime = XI_clock();
@@ -1572,13 +1552,13 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 
 		long long dTeachStartime;
 		dTeachStartime = XI_clock();
-		// Íâ²¿ÖáÔË¶¯ Ö´ĞĞ²âÁ¿ÔË¶¯ Íâ²¿Öá Ïà»ú Í¼Ïñ´¦Àí¶ÔÏó
-		//ÒÑĞŞ¸Ä
-		//sHintInfo.Format("XiRobot %s µÚ%d×éº¸·ì²âÁ¿ÖĞ¡­¡­ ½ø¶È£º%d×é/¹²%d×é", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
-		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}µÚ{1}×éº¸·ì²âÁ¿ÖĞ¡­¡­½ø¶È£º{2}×é/¹²{3}×é", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		// å¤–éƒ¨è½´è¿åŠ¨ æ‰§è¡Œæµ‹é‡è¿åŠ¨ å¤–éƒ¨è½´ ç›¸æœº å›¾åƒå¤„ç†å¯¹è±¡
+		//å·²ä¿®æ”¹
+		//sHintInfo.Format("XiRobot %s ç¬¬%dç»„ç„Šç¼æµ‹é‡ä¸­â€¦â€¦ è¿›åº¦ï¼š%dç»„/å…±%dç»„", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}ç¬¬{1}ç»„ç„Šç¼æµ‹é‡ä¸­â€¦â€¦è¿›åº¦ï¼š{2}ç»„/å…±{3}ç»„", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 		SetHintInfo(sHintInfo);
 
-		//jwq ÁÙÊ±£¬ÅĞ¶ÏÊÇ·ñÊÇ±ÕºÏÔ²»¡
+		//jwq ä¸´æ—¶ï¼Œåˆ¤æ–­æ˜¯å¦æ˜¯é—­åˆåœ†å¼§
 		double dDis = TwoPointDis(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0].StartPoint.x,
 			pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0].StartPoint.y,
 			pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0].StartPoint.z,
@@ -1597,10 +1577,10 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 		double dWeldMinY = dStartY < dEndY ? dStartY : dEndY;
 		double dMachinePosForArc = dWeldMinY + (100.0 * dMachineOffsetDir);
 
-		// ²âÊÔ²ÎÊı
-		pWeldAfterMeasure->m_bWorkpieceShape = WeldingLineIsArc(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]); // ¹¤¼şĞÎ×´
-		pWeldAfterMeasure->m_dOverflowHoleStart = pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.dStartHoleSize;// ¹ıË®¿×
-		pWeldAfterMeasure->m_dOverflowHoleEnd = pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.dEndHoleSize;// ¹ıË®¿×
+		// æµ‹è¯•å‚æ•°
+		pWeldAfterMeasure->m_bWorkpieceShape = WeldingLineIsArc(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]); // å·¥ä»¶å½¢çŠ¶
+		pWeldAfterMeasure->m_dOverflowHoleStart = pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.dStartHoleSize;// è¿‡æ°´å­”
+		pWeldAfterMeasure->m_dOverflowHoleEnd = pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.dEndHoleSize;// è¿‡æ°´å­”
 		pWeldAfterMeasure->m_pScanInit->m_bWorkpieceShape = pWeldAfterMeasure->m_bWorkpieceShape;
 
 		if (!GetLocalDebugMark())
@@ -1612,35 +1592,35 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 				CHECK_BOOL_RETURN(pRobotDriver->MoveToSafeHeight());
 			}
 
-			//ÒÑĞŞ¸Ä
+			//å·²ä¿®æ”¹
 			if ((!pWeldAfterMeasure->m_ptUnit->m_bBreakPointContinue) && (!m_bNaturalPop ||
-				IDOK == XUI::MesBox::PopOkCancel("¿ªÊ¼Ê¾½Ì!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")/*XiMessageBox("¿ªÊ¼Ê¾½Ì£¿\n!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")*/))
+				IDOK == XUI::MesBox::PopOkCancel("å¼€å§‹ç¤ºæ•™!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")/*XiMessageBox("å¼€å§‹ç¤ºæ•™ï¼Ÿ\n!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")*/))
 				//if ((!pWeldAfterMeasure->m_ptUnit->m_bBreakPointContinue) && (!m_bNaturalPop || 
-				//	IDOK == XiMessageBox("¿ªÊ¼Ê¾½Ì£¿\n!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")))
+				//	IDOK == XiMessageBox("å¼€å§‹ç¤ºæ•™ï¼Ÿ\n!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")))
 			{
 				long long lTimeS = XI_clock();
-				//´ò¿ª¾µÆ¬·À»¤
+				//æ‰“å¼€é•œç‰‡é˜²æŠ¤
 				pUnit->SwitchIO("MeasureLensProtection", true);
 				//if (!pUnit->SwitchIO("LensProtection", true)) {
-				//	XiMessageBox("¾µÆ¬·À»¤´ò¿ªÊ§°Ü!!!\n ¼´½«ÍË³öº¸½Ó³ÌĞò");
+				//	XiMessageBox("é•œç‰‡é˜²æŠ¤æ‰“å¼€å¤±è´¥!!!\n å³å°†é€€å‡ºç„Šæ¥ç¨‹åº");
 				//	return false;
 				//}
-				//Ê¾½Ì²âÁ¿ÔË¶¯
+				//ç¤ºæ•™æµ‹é‡è¿åŠ¨
 
 				if (false && pWeldAfterMeasure->m_bWorkpieceShape
 					&& dDis > 1.0)
 				{
-					// µ¥»úÔ²»¡²âÁ¿ÏÈ¶¯Íâ²¿Öáµ½ºÏÊÊÎ»ÖÃ
+					// å•æœºåœ†å¼§æµ‹é‡å…ˆåŠ¨å¤–éƒ¨è½´åˆ°åˆé€‚ä½ç½®
 					if (0 != pUnit->MoveExAxisFun(dMachinePosForArc, 9000, pUnit->m_nMeasureAxisNo))return false;
 					pUnit->WorldCheckRobotDone();
 					double dCurExPos = pUnit->GetExPositionDis(pUnit->m_nMeasureAxisNo);
-					if (fabs(dMachinePosForArc - dCurExPos) > 5.0) // ÓëÄ¿±êÎ»ÖÃÏà²î³¬¹ıãĞÖµ ÅĞ¶ÏÎªÔË¶¯Ê§°Ü
+					if (fabs(dMachinePosForArc - dCurExPos) > 5.0) // ä¸ç›®æ ‡ä½ç½®ç›¸å·®è¶…è¿‡é˜ˆå€¼ åˆ¤æ–­ä¸ºè¿åŠ¨å¤±è´¥
 					{
-						XiMessageBox("ScanWeldTrack:Íâ²¿ÖáÎ´ÔË¶¯µ½Ö¸¶¨Î»ÖÃ");
+						XiMessageBox("ScanWeldTrack:å¤–éƒ¨è½´æœªè¿åŠ¨åˆ°æŒ‡å®šä½ç½®");
 						return false;
 					}
 
-					//jwqÁÙÊ±£¬ÔİÊ±Ö»ÓÃÒ»Ìõº¸·ì
+					//jwqä¸´æ—¶ï¼Œæš‚æ—¶åªç”¨ä¸€æ¡ç„Šç¼
 					if (!ScanWeldTrack(pWeldAfterMeasure, pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0], nRobotNo, nGroupNo, dSafeHeight))
 					{
 						return false;
@@ -1652,9 +1632,9 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 					{
 						if (E_STAND_SEAM == pWeldAfterMeasure->GetWeldSeamType(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]))
 						{
-							//ÒÑĞŞ¸Ä
-							XUI::MesBox::PopInfo("{0}Á¢·å¡°²âÁ¿¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName.GetBuffer());
-							//XiMessageBox("%s Á¢·å¡°²âÁ¿¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName);
+							//å·²ä¿®æ”¹
+							XUI::MesBox::PopInfo("{0}ç«‹å³°â€œæµ‹é‡â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName.GetBuffer());
+							//XiMessageBox("%s ç«‹å³°â€œæµ‹é‡â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName);
 							//continue;
 						}
 						return false;
@@ -1662,16 +1642,16 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 				}
 
 				//continue;
-				//¹Ø±Õ¾µÆ¬·À»¤
+				//å…³é—­é•œç‰‡é˜²æŠ¤
 				pUnit->SwitchIO("MeasureLensProtection", false);
 				//if (!pUnit->SwitchIO("LensProtection", false)) {
-				//	XiMessageBox("¾µÆ¬·À»¤¹Ø±ÕÊ§°Ü!!!\n ¼´½«ÍË³öº¸½Ó³ÌĞò");
+				//	XiMessageBox("é•œç‰‡é˜²æŠ¤å…³é—­å¤±è´¥!!!\n å³å°†é€€å‡ºç„Šæ¥ç¨‹åº");
 				//	return false;
 				//}
 			}
 			else if (!pWeldAfterMeasure->m_bWorkpieceShape)
 			{
-				pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, dExAxlePos_y); // µ÷ÊÔÊ±ĞèÒªÉèÖÃ Êµ¼ÊÔËĞĞÊ±DoTeachÄÚ²¿ÉèÖÃ
+				pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, dExAxlePos_y); // è°ƒè¯•æ—¶éœ€è¦è®¾ç½® å®é™…è¿è¡Œæ—¶DoTeachå†…éƒ¨è®¾ç½®
 				CHECK_BOOL_RETURN(pWeldAfterMeasure->LoadTeachResult(nGroupNo));
 			}
 
@@ -1681,23 +1661,23 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			//pWeldAfterMeasure->DoTeach(nGroupNo, vtMeasurePulse, vnMeasureType, dExAxlePos);
 			CHECK_BOOL_RETURN(pWeldAfterMeasure->GeneralTeachResult(nGroupNo, vtMeasureCoord, vtMeasurePulse, vnMeasureType, dExAxlePos));
 			//continue;
-			pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, dExAxlePos_y); // µ÷ÊÔÊ±ĞèÒªÉèÖÃ Êµ¼ÊÔËĞĞÊ±DoTeachÄÚ²¿ÉèÖÃ
+			pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, dExAxlePos_y); // è°ƒè¯•æ—¶éœ€è¦è®¾ç½® å®é™…è¿è¡Œæ—¶DoTeachå†…éƒ¨è®¾ç½®
 			CHECK_BOOL_RETURN(pWeldAfterMeasure->LoadTeachResult(nGroupNo));
 		}
 		//continue;
 
-		// ¼ÆËãº¸µÀ
-		//ÒÑĞŞ¸Ä
-		//sHintInfo.Format("XiRobot %s µÚ%d×éº¸·ìº¸½Ó¹ì¼£¼ÆËãÖĞ¡­¡­ ½ø¶È£º%d×é/¹²%d×é", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
-		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}µÚ{1}×éº¸·ìº¸½Ó¹ì¼£¼ÆËãÖĞ¡­¡­ ½ø¶È£º{2}×é/¹²{3}×é", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		// è®¡ç®—ç„Šé“
+		//å·²ä¿®æ”¹
+		//sHintInfo.Format("XiRobot %s ç¬¬%dç»„ç„Šç¼ç„Šæ¥è½¨è¿¹è®¡ç®—ä¸­â€¦â€¦ è¿›åº¦ï¼š%dç»„/å…±%dç»„", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}ç¬¬{1}ç»„ç„Šç¼ç„Šæ¥è½¨è¿¹è®¡ç®—ä¸­â€¦â€¦ è¿›åº¦ï¼š{2}ç»„/å…±{3}ç»„", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 		SetHintInfo(sHintInfo);
-		//continue; // ÁÙÊ±µ÷ÊÔÊ¹ÓÃ Ìø¹ı²âÁ¿¹ı¹ì¼£ÒÔºóµÄÁ÷³Ì
+		//continue; // ä¸´æ—¶è°ƒè¯•ä½¿ç”¨ è·³è¿‡æµ‹é‡è¿‡è½¨è¿¹ä»¥åçš„æµç¨‹
 		if (/*(!pWeldAfterMeasure->m_bWorkpieceShape || dDis <= 1.0) && */!pWeldAfterMeasure->CalcWeldTrack(nGroupNo))
 		{
 			if (E_STAND_SEAM == pWeldAfterMeasure->GetWeldSeamType(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]))
 			{
-				//ÒÑĞŞ¸Ä
-				XUI::MesBox::PopInfo("{0}Á¢·ì¡°¼ÆËã¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName.GetBuffer());
+				//å·²ä¿®æ”¹
+				XUI::MesBox::PopInfo("{0}ç«‹ç¼â€œè®¡ç®—â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName.GetBuffer());
 				//continue;
 			}
 			return false;
@@ -1708,70 +1688,70 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 		double dTeachTime = 0.0;
 		dTeachTime = (double)(dTeachEndtime - dTeachStartime) / CLOCKS_PER_SEC;
 
-		// Ê±¼äÍ³¼Æ
+		// æ—¶é—´ç»Ÿè®¡
 		time_t curtime;
 		time(&curtime);
 		tm* nowtime = localtime(&curtime);
 		//CString strRobot1 = pRobotDriver->m_strRobotName;
 		CString strPath1;
-		strPath1.Format(".\\SteelStructure\\º¸½ÓÇ°Ê±¼ä\\%d%d%d.txt", 1900 + nowtime->tm_year, 1 + nowtime->tm_mon, nowtime->tm_mday);
+		strPath1.Format(".\\SteelStructure\\ç„Šæ¥å‰æ—¶é—´\\%d%d%d.txt", 1900 + nowtime->tm_year, 1 + nowtime->tm_mon, nowtime->tm_mday);
 		//string strPathAdr = strPath1;
 
 		std::ofstream outline;
 		outline.open(string(strPath1.GetBuffer()), ios::app);
 
-		outline << setiosflags(ios::fixed) << setprecision(4) << "µãÔÆ´¦ÀíÊ±¼ä:" << dCalceTime << "²âÁ¿Ê±¼ä:" << dTeachTime << endl;
+		outline << setiosflags(ios::fixed) << setprecision(4) << "ç‚¹äº‘å¤„ç†æ—¶é—´:" << dCalceTime << "æµ‹é‡æ—¶é—´:" << dTeachTime << endl;
 		outline.close();
 
-		//continue; // ²»º¸½Óµ÷ÊÔ
+		//continue; // ä¸ç„Šæ¥è°ƒè¯•
 
-		// Ö´ĞĞº¸½Ó
-		//ÒÑĞŞ¸Ä
-		//sHintInfo.Format("XiRobot %s µÚ%d×éº¸·ìº¸½ÓÖĞ¡­¡­ ½ø¶È£º%d×é/¹²%d×é", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
-		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}µÚ{1}×éº¸·ìº¸½ÓÖĞ¡­¡­ ½ø¶È£º{2}×é/¹²{3}×é", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		// æ‰§è¡Œç„Šæ¥
+		//å·²ä¿®æ”¹
+		//sHintInfo.Format("XiRobot %s ç¬¬%dç»„ç„Šç¼ç„Šæ¥ä¸­â€¦â€¦ è¿›åº¦ï¼š%dç»„/å…±%dç»„", pRobotDriver->m_strRobotName, nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		sHintInfo = XUI::Languge::GetInstance().translate("XiRobot{0}ç¬¬{1}ç»„ç„Šç¼ç„Šæ¥ä¸­â€¦â€¦ è¿›åº¦ï¼š{2}ç»„/å…±{3}ç»„", pRobotDriver->m_strRobotName.GetBuffer(), nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 		SetHintInfo(sHintInfo);
-		//2024/02/29 ĞÂ¼Óº¸½Óµ÷¶È£¨¸ú×Ù\ÆÕÍ¨º¸½Ó ÇĞ»»µ÷¶È£©
+		//2024/02/29 æ–°åŠ ç„Šæ¥è°ƒåº¦ï¼ˆè·Ÿè¸ª\æ™®é€šç„Šæ¥ åˆ‡æ¢è°ƒåº¦ï¼‰
 		if (!WeldSchedule(pWeldAfterMeasure, nGroupNo))
 		{
-			//¹Ø±Õ¾µÆ¬·À»¤
+			//å…³é—­é•œç‰‡é˜²æŠ¤
 			pUnit->SwitchIO("MeasureLensProtection", false);
 			pUnit->SwitchIO("TrackLensProtection", false);
 			pUnit->SwitchIO("TrackLaser", false);
 			if (E_STAND_SEAM == pWeldAfterMeasure->GetWeldSeamType(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]))
 			{
-				//ÒÑĞŞ¸Ä
-				XUI::MesBox::PopInfo("{0}Á¢·ì¡°º¸½Ó¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName.GetBuffer());
-				//XiMessageBox("%s Á¢·ì¡°º¸½Ó¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName);
+				//å·²ä¿®æ”¹
+				XUI::MesBox::PopInfo("{0}ç«‹ç¼â€œç„Šæ¥â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName.GetBuffer());
+				//XiMessageBox("%s ç«‹ç¼â€œç„Šæ¥â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName);
 				//continue;
 			}
 			return false;
 		}
-		//¹Ø±Õ¾µÆ¬·À»¤
+		//å…³é—­é•œç‰‡é˜²æŠ¤
 		//pUnit->SwitchIO("MeasureLensProtection", false);
 		//pUnit->SwitchIO("TrackLensProtection", false);
 		//pUnit->SwitchIO("TrackLaser", false);
-		//¸üĞÂÊı¾İ
+		//æ›´æ–°æ•°æ®
 		//CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
 		//pStatisticalData->UpDateStatisticsData();
-		// Ì§Ç¹
+		// æŠ¬æª
 		if (!GetLocalDebugMark())
 		{
-			WriteLog("¿ªÊ¼»ØÔ­µã");
+			WriteLog("å¼€å§‹å›åŸç‚¹");
 			//m_nStiffenPlatenum++;
 			T_ANGLE_PULSE tBackPulse = pRobotDriver->m_tHomePulse;
-			if (/*nGroupNo != (nWeldGropuNum - 1)*/FALSE) // ·Ç×îºóÒ»×éº¸·ì ²»ÍêÈ«ÊÕÇ¹
+			if (/*nGroupNo != (nWeldGropuNum - 1)*/FALSE) // éæœ€åä¸€ç»„ç„Šç¼ ä¸å®Œå…¨æ”¶æª
 			{
-				// ¾ø¶Ô°²È«Ì§Ç¹
+				// ç»å¯¹å®‰å…¨æŠ¬æª
 				//T_ANGLE_PULSE tCurPulse = pRobotDriver->GetCurrentPulse();
 				//tBackPulse.nSPulse = tCurPulse.nSPulse;
 				// 
-				// Ì§Ç¹µ½¹¤¼ş×î¸ßµãÉÏ·½
+				// æŠ¬æªåˆ°å·¥ä»¶æœ€é«˜ç‚¹ä¸Šæ–¹
 				XI_POINT backPoint;
 				T_ROBOT_COORS tBackCoor;
 				T_ANGLE_PULSE tCurPulse = pRobotDriver->GetCurrentPulse();
 				tBackPulse.nSPulse = tCurPulse.nSPulse;
 				pRobotDriver->RobotKinematics(tBackPulse, pRobotDriver->m_tTools.tGunTool, tBackCoor);
-				backPoint = pWeldAfterMeasure->GetPieceHeight(nGroupNo, 100.0); // º¸·ìÉ¾¼õºó±äÉÙ£¬´æÔÚ¸ß¶È¼ÆËã´íÎóÎÊÌâ£¬ÓĞÅöÇÀ·çÏÕ
+				backPoint = pWeldAfterMeasure->GetPieceHeight(nGroupNo, 100.0); // ç„Šç¼åˆ å‡åå˜å°‘ï¼Œå­˜åœ¨é«˜åº¦è®¡ç®—é”™è¯¯é—®é¢˜ï¼Œæœ‰ç¢°æŠ¢é£é™©
 				double dis = pUnit->GetPositionDis();
 #ifdef SINGLE_ROBOT
 				tBackCoor.dX = backPoint.x;
@@ -1794,14 +1774,14 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 			pRobotDriver->CallJob("CONTIMOVANY");
 			//pRobotDriver->MoveByJob(tBackPulse, pRobotDriver->m_tPulseHighSpeed, pRobotDriver->m_nExternalAxleType, "MOVJ");
 
-			//¹Ø±Õ¾µÆ¬·À»¤
+			//å…³é—­é•œç‰‡é˜²æŠ¤
 			pUnit->SwitchIO("MeasureLensProtection", false);
 			pUnit->SwitchIO("TrackLensProtection", false);
 			pUnit->SwitchIO("TrackLaser", false);
 			pRobotDriver->WorldCheckRobotDone();
-			WriteLog("»ØÔ­µãÍê³É");
+			WriteLog("å›åŸç‚¹å®Œæˆ");
 		}
-		if (m_dCurWeldLenBeforeCleanGun > PARA_SYSTEM(dMaxWeldLengthForCleanGun)) // ´óÓÚ3Ã×½øĞĞÒ»´ÎÇåÇ¹
+		if (m_dCurWeldLenBeforeCleanGun > PARA_SYSTEM(dMaxWeldLengthForCleanGun)) // å¤§äº3ç±³è¿›è¡Œä¸€æ¬¡æ¸…æª
 		{
 			CleanGun(pRobotDriver);
 			m_dCurWeldLenBeforeCleanGun = 0.0;
@@ -1813,21 +1793,21 @@ bool CAssemblyWeld::WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo)
 	pRobotDriver->CallJob("CONTIMOVANY");
 	pRobotDriver->WorldCheckRobotDone();
 
-	//if (m_vpRobotDriver.size() > 1)  // ·Çµ¥»ú º¸½ÓºóºáÒÆÖá»ØÁã
+	//if (m_vpRobotDriver.size() > 1)  // éå•æœº ç„Šæ¥åæ¨ªç§»è½´å›é›¶
 	//{
 	//	double dExSafePos = pRobotDriver->m_tHomePulse.lBYPulse * pRobotDriver->m_tExternalAxle[pUnit->m_nMeasureAxisNo - 1].dPulse;
 	//	pUnit->MoveExAxisFun(dExSafePos, 6000, pUnit->m_nMeasureAxisNo);
 	//	pUnit->RobotCheckDone();
 	//}
-	//ÒÑĞŞ¸Ä
-	//SetHintInfo("XiRobot º¸½Ó×÷Òµ½áÊø");
-	SetHintInfo(XUI::Languge::GetInstance().translate("XiRobotº¸½Ó×÷Òµ½áÊø"));//"XiRobot º¸½Ó×÷Òµ½áÊø"
+	//å·²ä¿®æ”¹
+	//SetHintInfo("XiRobot ç„Šæ¥ä½œä¸šç»“æŸ");
+	SetHintInfo(XUI::Languge::GetInstance().translate("XiRobotç„Šæ¥ä½œä¸šç»“æŸ"));//"XiRobot ç„Šæ¥ä½œä¸šç»“æŸ"
 	return true;
 }
 
 bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, LineOrCircularArcWeldingLine SeamData, int nRobotNo, int nGroupNo, double dSafeHeight)
 {
-	////¼ÆËãÉ¨Ãè¹ì¼£
+	////è®¡ç®—æ‰«æè½¨è¿¹
 	//std::vector<T_ROBOT_COORS> vtMeasureCoord;
 	//vector<T_ANGLE_PULSE> vtMeasurePulse;
 	//int nStartPointCount = 0;
@@ -1836,36 +1816,36 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	|| vtMeasurePulse.size() < 3
 	//	|| vtMeasureCoord.size() != vtMeasurePulse.size())
 	//{
-	//	XiMessageBox("¼ÆËãÉ¨Ãè¹ì¼£Ê§°Ü£¡");
+	//	XiMessageBox("è®¡ç®—æ‰«æè½¨è¿¹å¤±è´¥ï¼");
 	//	return false;
 	//}
 
-	////²åÈëÒ»¸öÏÂÇ¹°²È«Î»ÖÃ
+	////æ’å…¥ä¸€ä¸ªä¸‹æªå®‰å…¨ä½ç½®
 	//T_ROBOT_COORS tAimGunSafePos = vtMeasureCoord[0];
 	//tAimGunSafePos.dZ = dSafeHeight;
 	//vtMeasureCoord.insert(vtMeasureCoord.begin(), tAimGunSafePos);
 	//T_ANGLE_PULSE tAimGunSafePulse;
 	//if (!m_vpRobotDriver[nRobotNo]->RobotInverseKinematics(tAimGunSafePos, vtMeasurePulse[0], m_vpRobotDriver[nRobotNo]->m_tTools.tGunTool, tAimGunSafePulse))
 	//{
-	//	XiMessageBox("ÎŞÓĞĞ§°²È«Î»ÖÃ×ø±ê£¡");
+	//	XiMessageBox("æ— æœ‰æ•ˆå®‰å…¨ä½ç½®åæ ‡ï¼");
 	//	return false;
 	//}
 	//vtMeasurePulse.insert(vtMeasurePulse.begin(), tAimGunSafePulse);
 
-	////²åÈëÒ»¸öÌ§Ç¹°²È«Î»ÖÃ
+	////æ’å…¥ä¸€ä¸ªæŠ¬æªå®‰å…¨ä½ç½®
 	//tAimGunSafePos = vtMeasureCoord.back();
 	//tAimGunSafePos.dZ = dSafeHeight;
 	//vtMeasureCoord.push_back(tAimGunSafePos);
 	//if (!m_vpRobotDriver[nRobotNo]->RobotInverseKinematics(tAimGunSafePos, vtMeasurePulse.back(), m_vpRobotDriver[nRobotNo]->m_tTools.tGunTool, tAimGunSafePulse))
 	//{
-	//	XiMessageBox("ÎŞÓĞĞ§°²È«Î»ÖÃ×ø±ê£¡");
+	//	XiMessageBox("æ— æœ‰æ•ˆå®‰å…¨ä½ç½®åæ ‡ï¼");
 	//	return false;
 	//}
 	//vtMeasurePulse.push_back(tAimGunSafePulse);
 
 	//std::vector<CvPoint3D64f> vtPointCloud(0);
 
-	////¿ªÊ¼É¨Ãè
+	////å¼€å§‹æ‰«æ
 	//BOOL nNaturalPop = false;
 	//if (g_bGantryEnableMark)
 	//{
@@ -1898,7 +1878,7 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//Three_DPoint* input_point_cloud = (Three_DPoint*)vtPointCloud.data();
 	//int input_point_cloud_size = vtPointCloud.size();
 
-	//// È«²¿µãÔÆÌáÈ¡»¡Ïß
+	//// å…¨éƒ¨ç‚¹äº‘æå–å¼§çº¿
 	//int* cloud_type = new int;
 	//int* nSampPointSize = new int;
 	//*cloud_type = 0;
@@ -1914,7 +1894,7 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//Three_DPoint reference_vector_2 = { SeamData.EndPoint.x + dCurCarPos, SeamData.EndPoint.y, SeamData.EndPoint.z };
 	//Three_DPoint reference_normal_2 = { SeamData.EndNormalVector.x, SeamData.EndNormalVector.y, 0 };
 	//Three_DPoint reference_dir = { tStartAngle.x,tStartAngle.y,tStartAngle.z };
-	//// Êä³öµãÔÆ½Ó¿ÚÈë²Î
+	//// è¾“å‡ºç‚¹äº‘æ¥å£å…¥å‚
 	//CString sFilerefer;
 	//sFilerefer.Format("%s%d_%d_GetLocalWelding2Refer.txt", pWeldAfterMeasure->m_sDataSavePath, nGroupNo, 0);
 	//FILE* fp = fopen(sFilerefer.GetBuffer(0), "w");
@@ -1936,11 +1916,11 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 
 	//if (*cloud_type != 2 || *nSampPointSize < 2)
 	//{
-	//	XiMessageBox("ÌáÈ¡Ô²»¡Êı¾İÊı¾İ");
+	//	XiMessageBox("æå–åœ†å¼§æ•°æ®æ•°æ®");
 	//	return false;
 	//}
 
-	//// ¸ù¾İµãÔÆÊä³öÊı¾İÆ½»¬´¦ÀíÉú³É×îÖÕº¸½Ó¹ì¼£
+	//// æ ¹æ®ç‚¹äº‘è¾“å‡ºæ•°æ®å¹³æ»‘å¤„ç†ç”Ÿæˆæœ€ç»ˆç„Šæ¥è½¨è¿¹
 	//vector<XI_POINT> vtWeldTrack;
 	//vector<T_ROBOT_COORS> vtWeldTrackRobot;
 	//vtWeldTrack.clear();
@@ -1952,12 +1932,12 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	vtWeldTrack.push_back(tp);
 	//}
 	//SavePointsData(vtWeldTrack, sFile);
-	//// YÑùÌõÂË²¨
+	//// Yæ ·æ¡æ»¤æ³¢
 	//pWeldAfterMeasure->SplineFiltering(vtMeasureCoord.back().dBY, vtWeldTrack, vtWeldTrackRobot);
-	//// ¼ÆËã×îÖÕ¹ì¼£
+	//// è®¡ç®—æœ€ç»ˆè½¨è¿¹
 	//pWeldAfterMeasure->CalcRealWeldTrack(pWeldAfterMeasure->m_vvtWeldLineInfoGroup[nGroupNo][0], vtWeldTrackRobot);
 
-	//// ±£´æ ĞòºÅ Ö±½Ç×ø±ê Íâ²¿Öá×ø±ê º¸½ÓÀàĞÍ
+	//// ä¿å­˜ åºå· ç›´è§’åæ ‡ å¤–éƒ¨è½´åæ ‡ ç„Šæ¥ç±»å‹
 	//CString sFileName;
 	//sFileName.Format("%s%d_%d_RealWeldCoord.txt", pWeldAfterMeasure->m_sDataSavePath, nGroupNo, 2);
 	//FILE* pf = fopen(sFileName, "w");
@@ -1989,7 +1969,7 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	CString referenceInfo;
 	//	referenceInfo.Format(".\\RobotA\\LineScan\\PointCloud\\%d_Inputvertical.txt", i);
 	//	FILE* pfPointCloudInput = fopen(referenceInfo.GetBuffer(0), "w");
-	//	// ±£´æÃ¿´ÎÊäÈëĞÅÏ¢¼°´¦Àí½á¹û
+	//	// ä¿å­˜æ¯æ¬¡è¾“å…¥ä¿¡æ¯åŠå¤„ç†ç»“æœ
 	//	fprintf(pfPointCloudInput, "tCameraNorm:%11.3lf%11.3lf%11.3lf tPlaneHNorm:%11.3lf%11.3lf%11.3lf tRefPtn[0]:%11.3lf%11.3lf%11.3lf tRefPtn[1]:%11.3lf%11.3lf%11.3lf\n",
 	//		tCameraNorm.x, tCameraNorm.y, tCameraNorm.z, tPlaneHNorm.x, tPlaneHNorm.y, tPlaneHNorm.z,
 	//		tRefPtn[0].x, tRefPtn[0].y, tRefPtn[0].z, tRefPtn[1].x, tRefPtn[1].y, tRefPtn[1].z);
@@ -2008,11 +1988,11 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	}
 	//	if (nWeldInfoNum == 0)
 	//	{
-	//		XiMessageBox("ÌáÈ¡Ô²»¡Á¢·ìÊı¾İÊ§°Ü£¡");
+	//		XiMessageBox("æå–åœ†å¼§ç«‹ç¼æ•°æ®å¤±è´¥ï¼");
 	//		return false;
 	//	}
 
-	//	//jwqÁÙÊ±£¬Çó³öÀíÏëÆğµã×ø±ê
+	//	//jwqä¸´æ—¶ï¼Œæ±‚å‡ºç†æƒ³èµ·ç‚¹åæ ‡
 	//	double dDis = TwoPointDis(tWeldInfo[0].staPnt.x, tWeldInfo[0].staPnt.y, tWeldInfo[0].staPnt.z, tWeldInfo[0].endPnt.x, tWeldInfo[0].endPnt.y, tWeldInfo[0].endPnt.z);
 	//	double dDisX = (tWeldInfo[0].endPnt.x - tWeldInfo[0].staPnt.x) / dDis;
 	//	double dDisY = (tWeldInfo[0].endPnt.y - tWeldInfo[0].staPnt.y) / dDis;
@@ -2051,7 +2031,7 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	}
 	//	file.XI_fclose();
 
-	//	//jwqÁÙÊ±£¬¸ÄÎª¹Ì¶¨³¤¶È
+	//	//jwqä¸´æ—¶ï¼Œæ”¹ä¸ºå›ºå®šé•¿åº¦
 	//	double dRealDis = 17.0;
 	//	int nNo = (int)(dRealDis / 2.0 + 0.5);
 	//	double dStepDis = dRealDis / (double)nNo;
@@ -2078,7 +2058,7 @@ bool CAssemblyWeld::ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, Line
 	//	CString vertical;
 	//	vertical.Format(".\\RobotA\\LineScan\\PointCloud\\vertical_%d.txt", i);
 	//	SavePointsData(vtVertical, vertical);
-	//	// Éú³ÉÁ¢·åº¸½Ó¹ì¼£
+	//	// ç”Ÿæˆç«‹å³°ç„Šæ¥è½¨è¿¹
 	//	double dVerdir = atan2(tWeldInfo->normal.y, tWeldInfo->normal.x) * 180.0 / PI;
 	//	
 	//	//double dVerdir = atan2(SeamData.StartNormalVector.y, SeamData.StartNormalVector.x) * 180.0 / PI;
@@ -2123,7 +2103,7 @@ void CAssemblyWeld::GetCameraTool(int nRobotNo, int nCameraNo, T_ROBOT_COORS& tC
 {
 	CUnit* pUnit = m_vpUnit[nRobotNo];
 	tCameraTool = pUnit->GetCameraTool(nCameraNo);
-	WriteLog("%dºÅ»úĞµ±Û¼¤¹âÏà»ú¹¤¾ß£º%lf,%lf,%lf,%lf,%lf,%lf", 
+	WriteLog("%då·æœºæ¢°è‡‚æ¿€å…‰ç›¸æœºå·¥å…·ï¼š%lf,%lf,%lf,%lf,%lf,%lf", 
 		nRobotNo, tCameraTool.dX, tCameraTool.dY, tCameraTool.dZ, tCameraTool.dRX, tCameraTool.dRY, tCameraTool.dRZ);
 	m_vpRobotDriver[nRobotNo]->SetPosVar(99, tCameraTool);
 }
@@ -2136,7 +2116,7 @@ void CAssemblyWeld::GetRecogCameraTool(int nRobotNo, T_ROBOT_COORS& tRecogCamera
 void CAssemblyWeld::ShowMoveState(CUnit* pUnit)
 {
 	CRobotDriverAdaptor* pRobotDriver = pUnit->GetRobotCtrl();
-	//ÏÔÊ¾»úĞµ±Ûµ±Ç°Î»ÖÃ
+	//æ˜¾ç¤ºæœºæ¢°è‡‚å½“å‰ä½ç½®
 	T_ROBOT_COORS tCurCoord = pRobotDriver->GetCurrentPos();
 
     CString strCoorX;
@@ -2175,10 +2155,10 @@ void CAssemblyWeld::ShowMoveState(CUnit* pUnit)
 	strAxis_Z.Format("%.4f", tCurCoord.dBZ * pRobotDriver->GetPanasonicExDir(E_EX_Z));
 	SetDlgItemData(IDC_EDIT_EXTERNAL_Z, strAxis_Z, this, m_bIfWindowOn);
 
-//	// º¸Ë¿¼ì²â
+//	// ç„Šä¸æ£€æµ‹
 // 	if (m_cIOControl->ReadInbitNEW(202) == TRUE&&HSJC == false)
 // 	{
-// 		XiMessageBox("º¸Ë¿ÒÑ¾­ÓÃÍê");
+// 		XiMessageBox("ç„Šä¸å·²ç»ç”¨å®Œ");
 // 		OnBtnStop(pCuttingRobot);
 // 		HSJC = true;
 // 		return;
@@ -2218,7 +2198,7 @@ bool CAssemblyWeld::LoadLastCtrlState()
 	opini.ReadString("LastState", strCtrlState);
 	if (!CStringToULongLong(ullCtrlState, strCtrlState))
 	{
-		XUI::MesBox::PopError("Error:{0}ÎÄ¼şÖĞ³öÏÖ´íÎóµÄLastState,ÕâÊÇ²»±»ÔÊĞíµÄĞĞÎª£¬ÇëÎğÉÃ×Ô¸ü¸ÄLastState£¡",
+		XUI::MesBox::PopError("Error:{0}æ–‡ä»¶ä¸­å‡ºç°é”™è¯¯çš„LastState,è¿™æ˜¯ä¸è¢«å…è®¸çš„è¡Œä¸ºï¼Œè¯·å‹¿æ“…è‡ªæ›´æ”¹LastStateï¼",
 			(const char*)OPTIONAL_FUNCTION);
 		return false;
 	}
@@ -2235,7 +2215,7 @@ void CAssemblyWeld::LoadTableGroupScan()
 	int nCurTableNo = 0;
 	CString strKey;
 	CString sFileName = DATA_PATH + pRobotDriver->m_strRobotName + LINE_SCAN_PARAM;
-	//¼ÓÔØÊı¾İ
+	//åŠ è½½æ•°æ®
 	COPini opini;
 	opini.SetFileName(sFileName);
 	opini.SetSectionName("CurUseTableNo");
@@ -2250,16 +2230,16 @@ void CAssemblyWeld::LoadTableGroupScan()
 	}
 	if (nTotalTableNumber < 1)
 	{
-		XiMessageBox("ÁÏÌ¨ĞÅÏ¢´íÎó£¬Çë¼ì²é");
+		XiMessageBox("æ–™å°ä¿¡æ¯é”™è¯¯ï¼Œè¯·æ£€æŸ¥");
 	}
 	
-	//Ë¢ĞÂ½çÃæ
+	//åˆ·æ–°ç•Œé¢
 	m_comboTableGroupleft.ResetContent();
 	for (int i = 0; i < nTotalTableNumber; i++)
 	{
 		CString str;
-		str.Format("%dºÅÁÏÌ¨", i);
-		//ÒÑĞŞ¸Ä
+		str.Format("%då·æ–™å°", i);
+		//å·²ä¿®æ”¹
 		str = XUI::Languge::GetInstance().translate(str.GetBuffer());
 		m_comboTableGroupleft.AddString(str);
 	}
@@ -2290,7 +2270,7 @@ void CAssemblyWeld::LoadPartType()
 		str.Format("Number%d", i);
 		opini.ReadString(str, &nTypeNo);
 		m_nsPartType[nTypeNo] = sTypeName;
-		//ÒÑĞŞ¸Ä
+		//å·²ä¿®æ”¹
 		sTypeName = XUI::Languge::GetInstance().translate(sTypeName.GetBuffer());
 		m_ctlWorkpieceType.AddString(sTypeName);
 		if (nTypeNo == nCurChooseType)
@@ -2300,12 +2280,12 @@ void CAssemblyWeld::LoadPartType()
 	}
 	if (m_nsPartType.size() != nTotalTypeNum)
 	{
-		XiMessageBox("¹¤¼şÀàĞÍ¼ÓÔØÊ§°Ü£¡");
+		XiMessageBox("å·¥ä»¶ç±»å‹åŠ è½½å¤±è´¥ï¼");
 	}
 
 	m_ctlWorkpieceType.SetCurSel(nSetNo);
 	m_tChoseWorkPieceType = (E_WORKPIECE_TYPE)nCurChooseType;
-	//ÒÑĞŞ¸Ä
+	//å·²ä¿®æ”¹
 	XUI::Languge::GetInstance().translateDialog(this);
 }
 
@@ -2320,7 +2300,7 @@ void CAssemblyWeld::LoadDebugPara()
 void CAssemblyWeld::LoadRobotandCar(CRobotDriverAdaptor* pRobotCtrl, int tablenum)
 {
 	
-	//³õÊ¼»¯´ó³µ¼«ÏŞ¾àÀë£¬»úĞµ±Û¼«ÏŞ¾àÀë£¬´ó³µ×îĞ¡ËÙ¶È£¬´ó³µ¼Ó¼õËÙÊ±¼ä	 
+	//åˆå§‹åŒ–å¤§è½¦æé™è·ç¦»ï¼Œæœºæ¢°è‡‚æé™è·ç¦»ï¼Œå¤§è½¦æœ€å°é€Ÿåº¦ï¼Œå¤§è½¦åŠ å‡é€Ÿæ—¶é—´	 
 //	double dXScanSize;
 //	double dZScanSize;
 //	double RXScanSize;
@@ -2362,7 +2342,7 @@ void CAssemblyWeld::LoadRobotandCar(CRobotDriverAdaptor* pRobotCtrl, int tablenu
 //	opini.ReadString("RZScanSize", &RZScanSize);
 //
 //	pRobotCtrl->RobotKinematics(pRobotCtrl->t_StartPlus, pRobotCtrl->m_tTools.tGunTool, pRobotCtrl->startWorldCoors);
-//	// ÏßÉ¨Î»ÖÃºÍ×ËÌ¬ ²¹³¥ ÁÙÊ±
+//	// çº¿æ‰«ä½ç½®å’Œå§¿æ€ è¡¥å¿ ä¸´æ—¶
 //	if (1 == pRobotCtrl->m_nRobotInstallDir)
 //	{
 //#ifdef SINGLE_ROBOT
@@ -2383,78 +2363,150 @@ void CAssemblyWeld::LoadRobotandCar(CRobotDriverAdaptor* pRobotCtrl, int tablenu
 //	bool bRst = pRobotCtrl->RobotInverseKinematics(pRobotCtrl->startWorldCoors, pRobotCtrl->t_StartPlus, pRobotCtrl->m_tTools.tGunTool, pRobotCtrl->t_StartPlus);
 //	if (false == bRst)
 //	{
-//		XiMessageBox("ÏßÉ¨³õÊ¼É¨Ãè×ø±êĞŞ¸ÄÊ§°Ü");
-//	}
-//
-//	pRobotCtrl->startWorldCoors.dY += pRobotCtrl->ScanStartCarLoction;
-//	pRobotCtrl->endWorldCoors = pRobotCtrl->startWorldCoors;
-//	pRobotCtrl->endWorldCoors.dY += pRobotCtrl->m_dScanLength;
-//
-//
-//	//¼ÓÔØÏßÉ¨µãÔÆ´¦Àí·¶Î§
-//	opini.ReadString("Range_XMax", &(m_vpLaserLineScreen[0]->m_dRange_XMax));
-//	opini.ReadString("Range_XMin", &(m_vpLaserLineScreen[0]->m_dRange_XMin));
-//	opini.ReadString("Range_YMax", &(m_vpLaserLineScreen[0]->m_dRange_YMax));
-//	opini.ReadString("Range_YMin", &(m_vpLaserLineScreen[0]->m_dRange_YMin));
-//	opini.ReadString("Range_ZMax", &(m_vpLaserLineScreen[0]->m_dRange_ZMax));
-//	opini.ReadString("Range_ZMin", &(m_vpLaserLineScreen[0]->m_dRange_ZMin));
+bool CAssemblyWeld::LoadControlUnitInfos(std::vector<T_CONTRAL_UNIT>& vtUnitInfo)
+	vtUnitInfo.clear();
+	bool bRtn = true;
+	bRtn = bRtn && (opini.SetFileName(CONTRAL_UNIT_INFO_INI) == TRUE);
+	bRtn = bRtn && (opini.SetSectionName("UnitNum") == TRUE);
+	bRtn = bRtn && (opini.ReadString("UnitNum", &nNum) == TRUE);
+	if (!bRtn)
+	{
+		return false;
+	}
 
-	//m_cLeftCleanGunIOQQ = 209;
-	//m_cLeftCleanGunIOJS = 210;
-	//m_cLeftCleanGunIOJJ = 200;
+	vtUnitInfo.reserve(nNum);
+	for (int i = 0; i < nNum; i++)
+		CString strKey = GetStr("Unit%d", i);
+
+		bRtn = bRtn && (opini.SetSectionName("UnitName") == TRUE);
+		bRtn = bRtn && (opini.ReadString(strKey, tContralUnitInfo.strUnitName) == TRUE);
+		bRtn = bRtn && (opini.SetSectionName("ChineseName") == TRUE);
+		bRtn = bRtn && (opini.ReadString(strKey, tContralUnitInfo.strChineseName) == TRUE);
+		bRtn = bRtn && (opini.SetSectionName("ContralType") == TRUE);
+		bRtn = bRtn && (opini.ReadString(strKey, tContralUnitInfo.strUnitType) == TRUE);
+		bRtn = bRtn && (opini.SetSectionName("UnitType") == TRUE);
+		bRtn = bRtn && (opini.ReadString(strKey, &tContralUnitInfo.nContralUnitType) == TRUE);
+		if (!bRtn)
+		{
+			return false;
+		}
+
+		vtUnitInfo.push_back(tContralUnitInfo);
+	}
+
+	return true;
+}
+
+void CAssemblyWeld::ResetUnitRuntimeState()
+{
+	for (auto& pThread : m_vtRobotThread)
+	{
+		delete pThread;
+		pThread = NULL;
+	}
+	m_vtRobotThread.clear();
+
+	for (auto& pLaserLineScreen : m_vpLaserLineScreen)
+	{
+		delete pLaserLineScreen;
+		pLaserLineScreen = NULL;
+	}
+	m_vpLaserLineScreen.clear();
+
+	for (auto& pScanInit : m_vpScanInit)
+	{
+		delete pScanInit;
+		pScanInit = NULL;
+	}
+	m_vpScanInit.clear();
+
+	for (auto& pImg : m_vpShowLaserImgBuff)
+	{
+		if (NULL != pImg)
+		{
+			cvReleaseImage(&pImg);
+		}
+	}
+	m_vpShowLaserImgBuff.clear();
+
+	m_vpRobotDriver.clear();
+}
+
+void CAssemblyWeld::DestroyUnits()
+{
+	for (auto& pUnit : m_vpUnit)
+	{
+		delete pUnit;
+		pUnit = NULL;
+	}
+	m_vpUnit.clear();
+}
+
+void CAssemblyWeld::InitializeUnitRuntimeArtifacts(CUnit* pUnit, int nUnitNo)
+{
+	if (NULL == pUnit)
+	{
+		return;
+	}
+
+	CRobotDriverAdaptor* pRobotCtrl = pUnit->GetRobotCtrl();
+	if (NULL == pRobotCtrl)
+	{
+		return;
+	}
+
+	pRobotCtrl->m_nRobotNo = nUnitNo;
+	m_vpRobotDriver.push_back(pRobotCtrl);
+
+	T_ROBOT_THREAD* pRobotThread = new T_ROBOT_THREAD;
+	pRobotThread->pRobotCtrl = pRobotCtrl;
+	pRobotThread->cIncisePlanePart = this;
+	pRobotThread->bRobotThreadStatus = false;
+	pRobotThread->nGroupNo = 0;
+	pRobotThread->nLayerNo = 0;
+	m_vtRobotThread.push_back(pRobotThread);
+
+	if (-1 != pUnit->m_nLineScanCameraNo)
+	{
+		CLaserLineScreen* pLaserLineScreen = new CLaserLineScreen(pUnit, &m_bNaturalPop);
+		m_vpLaserLineScreen.push_back(pLaserLineScreen);
+	}
+
+	IplImage* pImg = cvCreateImage(cvSize(
+			pUnit->GetCameraParam(1).tDHCameraDriverPara.nRoiWidth,
+			pUnit->GetCameraParam(1).tDHCameraDriverPara.nRoiHeight), IPL_DEPTH_8U, 3);
+	m_vpShowLaserImgBuff.push_back(pImg);
+
+	CScanInitModule* pScanInit = new CScanInitModule(pRobotCtrl, pUnit);
+	m_vpScanInit.push_back(pScanInit);
+
+	if (!GetLocalDebugMark())
+	{
+		pRobotCtrl->ServoOn();
+		pRobotCtrl->HoldOff();
+	}
 }
 
 BOOL CAssemblyWeld::InitAllUnit()
 {
-	BOOL bRtn = TRUE;
-	COPini opini;
-	bRtn = bRtn && opini.SetFileName(CONTRAL_UNIT_INFO_INI);
-	bRtn = bRtn && opini.SetSectionName("UnitNum");
-	int nNum = 0;
-	bRtn = bRtn && opini.ReadString("UnitNum", &nNum);
-	for (size_t i = 0; i < nNum; i++)
+	std::vector<T_CONTRAL_UNIT> vtUnitInfo;
+	if (!LoadControlUnitInfos(vtUnitInfo))
 	{
-		T_CONTRAL_UNIT tContralUnitInfo;
-		tContralUnitInfo.nUnitNo = i;
-		bRtn = bRtn && opini.SetSectionName("UnitName");
-		bRtn = bRtn && opini.ReadString(GetStr("Unit%d", i), tContralUnitInfo.strUnitName);
-		bRtn = bRtn && opini.SetSectionName("ChineseName");
-		bRtn = bRtn && opini.ReadString(GetStr("Unit%d", i), tContralUnitInfo.strChineseName);
-		bRtn = bRtn && opini.SetSectionName("ContralType");
-		bRtn = bRtn && opini.ReadString(GetStr("Unit%d", i), tContralUnitInfo.strUnitType);
-		bRtn = bRtn && opini.SetSectionName("UnitType");
-		bRtn = bRtn && opini.ReadString(GetStr("Unit%d", i), &tContralUnitInfo.nContralUnitType);
-		CString strFilePath = DATA_PATH + tContralUnitInfo.strUnitName;
-		CheckFolder(strFilePath);
-		m_vtContralUnitInfo.push_back(tContralUnitInfo);
+		return FALSE;
+	}
 
-		switch (tContralUnitInfo.nContralUnitType)
-		{
-		case 1:
-		{
-			break;
-		}
-		case 2:
-		{
-			break;
-		}
-		case 3:
-		{
-			//m_pGeneralControl = new CGeneralControl(tContralUnitInfo, m_pCtrlCardDriver);
-			break;
-		}
-		case 4:
-		{
-			//CCompositionTechniqueRobot* pCompositionTechniqueRobot;
-			//pCompositionTechniqueRobot = new CCompositionTechniqueRobot(tContralUnitInfo, m_pCtrlCardDriver);
-			//pCompositionTechniqueRobot->m_nSortingRobotNo = m_vpCompositionTechniqueRobot.size();
-			//m_vpCompositionTechniqueRobot.push_back(pCompositionTechniqueRobot);
-			break;
-		}
-		case 5:
-		{
-			//CChamferRobot* pChamferRobot;
-			//pChamferRobot = new CChamferRobot(tContralUnitInfo, m_pCtrlCardDriver);
+	ResetUnitRuntimeState();
+	DestroyUnits();
+	m_vtContralUnitInfo = vtUnitInfo;
+
+	for (size_t i = 0; i < m_vtContralUnitInfo.size(); i++)
+	{
+		const T_CONTRAL_UNIT& tContralUnitInfo = m_vtContralUnitInfo[i];
+
+			CUnit* pUnit = new CUnit(tContralUnitInfo, m_pServoMotorDriver);
+		InitializeUnitRuntimeArtifacts(m_vpUnit[nUnitNo], nUnitNo);
+	}
+	return TRUE;
 			//pChamferRobot->m_nChamferRobotNo = m_vpChamferRobot.size();
 			//m_vpChamferRobot.push_back(pChamferRobot);
 			break;
@@ -2513,7 +2565,7 @@ BOOL CAssemblyWeld::InitAllUnit()
 	//	}
 	//	else
 	//	{
-	//		MESSAGE_BOX("Éè±¸ÒÑ¼±Í££¬µ±Ç°¾ø¶ÔÎ»ÖÃÉèÖÃÊ§°Ü");
+	//		MESSAGE_BOX("è®¾å¤‡å·²æ€¥åœï¼Œå½“å‰ç»å¯¹ä½ç½®è®¾ç½®å¤±è´¥");
 	//	}
 	//}
 	//GetRobotTransMatrix(m_dAToBTransMatrix, m_dBToATransMatrix);
@@ -2525,7 +2577,7 @@ void CAssemblyWeld::OnBnClickedButtonPanoRecognition()
 {
 //	if (!RunPara::GetInstance().loadAllPara())
 //	{
-//		XUI::MesBox::PopError("¶ÁÈ¡ÔËĞĞ²ÎÊıÊ§°Ü£¡");
+//		XUI::MesBox::PopError("è¯»å–è¿è¡Œå‚æ•°å¤±è´¥ï¼");
 //		return;
 //	}
 //
@@ -2542,24 +2594,24 @@ void CAssemblyWeld::OnBnClickedButtonPanoRecognition()
 //		//bool state = WidgetLaserTrack(pImg, LaserInfo,"WidgetLaserTrack-corner");
 //		if (PtnNum <= 0)
 //		{
-//			XUI::MesBox::PopInfo("Ê¾½ÌÊ§°ÜFF£¬Çë¼ì²é¼¤¹âÍ¼Æ¬ÊÇ·ñÕı³£");
+//			XUI::MesBox::PopInfo("ç¤ºæ•™å¤±è´¥FFï¼Œè¯·æ£€æŸ¥æ¿€å…‰å›¾ç‰‡æ˜¯å¦æ­£å¸¸");
 //		}
 //		else if (PtnNum >= 1)
 //		{
 //			for (int nChioceNo = 0; nChioceNo < PtnNum; nChioceNo++)
 //			{
-//				XiMessageBox("ÏÔÊ¾ÏÂÒ»ÕÅ");
+//				XiMessageBox("æ˜¾ç¤ºä¸‹ä¸€å¼ ");
 //				std::vector<CvPoint> vLeftPtn;
 //				std::vector<CvPoint> vRightPtn;
 //				CvPoint tKeyPoint = LaserInfo[nChioceNo].crossPoint;
 //				for (int i = 0; i < LaserInfo[nChioceNo].samPntNum; i++)
 //				{
-//					// ¼¤¹âÍ¼×ó²à¼¤¹âÏß Á¢°å
+//					// æ¿€å…‰å›¾å·¦ä¾§æ¿€å…‰çº¿ ç«‹æ¿
 //					vLeftPtn.push_back(LaserInfo[nChioceNo].bottomPlateLineSamPnt[i]);//verticalPlateLineSamPnt
-//					// ¼¤¹âÍ¼ÓÒ²à¼¤¹âÏß µ×°å
+//					// æ¿€å…‰å›¾å³ä¾§æ¿€å…‰çº¿ åº•æ¿
 //					vRightPtn.push_back(LaserInfo[nChioceNo].verticalPlateLineSamPnt[i]);
 //				}
-//				if (1 < vLeftPtn.size() && 1 < vRightPtn.size()) // »ò ¸Ä ÇÒ ¼æÈİE_L_LINE_POINTºÍE_R_LINE_POINT
+//				if (1 < vLeftPtn.size() && 1 < vRightPtn.size()) // æˆ– æ”¹ ä¸” å…¼å®¹E_L_LINE_POINTå’ŒE_R_LINE_POINT
 //				{
 //					IplImage* pColorImg = cvCreateImage(cvSize(pImg->width, pImg->height), IPL_DEPTH_8U, 3);
 //					cvCvtColor(pImg, pColorImg, CV_GRAY2RGB);
@@ -2574,10 +2626,10 @@ void CAssemblyWeld::OnBnClickedButtonPanoRecognition()
 //
 //	return;
 
-	WriteLog("µ¥»÷£ºÄ£°åÆ¥ÅäÊ¶±ğ");
+	WriteLog("å•å‡»ï¼šæ¨¡æ¿åŒ¹é…è¯†åˆ«");
 	if (true == m_bAutoWeldWorking)
 	{
-		XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ!");
+		XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­!");
 		return;
 	}
 	//AfxBeginThread(ThreadGrooveWeld, this);
@@ -2585,7 +2637,7 @@ void CAssemblyWeld::OnBnClickedButtonPanoRecognition()
 	CUnit* pUnit = m_vpUnit[nRobotNo];
 	CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 	CHECK_BOOL(CreateObject(m_tChoseWorkPieceType, pUnit, &m_pWeldAfterMeasure));
-	if (1 == XiMessageBox("È·¶¨:´´½¨Ä£°åĞÅÏ¢  È¡Ïû:º¸·ìÄ£°åÆ¥Åä"))
+	if (1 == XiMessageBox("ç¡®å®š:åˆ›å»ºæ¨¡æ¿ä¿¡æ¯  å–æ¶ˆ:ç„Šç¼æ¨¡æ¿åŒ¹é…"))
 	{
 		m_pWeldAfterMeasure->GenerateTemplate();
 	}
@@ -2599,7 +2651,7 @@ void CAssemblyWeld::OnBnClickedButtonPanoRecognition()
 
 void CAssemblyWeld::OnBnClickedButtonRobotCtrl()
 {
-	WriteLog("µ¥»÷£º»úÆ÷ÈË¿ØÖÆ");
+	WriteLog("å•å‡»ï¼šæœºå™¨äººæ§åˆ¶");
 	CRobotCtrlDlg *pRobotCtrl = NULL;
 	pRobotCtrl = new CRobotCtrlDlg(m_vpRobotDriver);
 	pRobotCtrl->DoModal();
@@ -2609,17 +2661,17 @@ void CAssemblyWeld::OnBnClickedButtonRobotCtrl()
 void CAssemblyWeld::OnBnClickedButtonAntifeeding()
 {
     CRobotDriverAdaptor *pRobotCtrl;
-    if (XUI::MesBox::PopOkCancel("×ó»úÆ÷ÈËÔËĞĞ£¿"))
+    if (XUI::MesBox::PopOkCancel("å·¦æœºå™¨äººè¿è¡Œï¼Ÿ"))
     {
         pRobotCtrl = m_vpRobotDriver[0];
     }
-    else if (XUI::MesBox::PopOkCancel("ÓÒ»úÆ÷ÈËÔËĞĞ£¿"))
+    else if (XUI::MesBox::PopOkCancel("å³æœºå™¨äººè¿è¡Œï¼Ÿ"))
     {
         pRobotCtrl = m_vpRobotDriver[1];
     }
     else
     {
-		XUI::MesBox::PopInfo("Î´Ñ¡Ôñ»úÆ÷ÈË");
+		XUI::MesBox::PopInfo("æœªé€‰æ‹©æœºå™¨äºº");
         return;
     }
     T_ROBOT_COORS tRobotCurCoord;
@@ -2633,22 +2685,22 @@ void CAssemblyWeld::OnBnClickedButtonAntifeeding()
     fprintf(CoutTeachPoint, "%d %lf %lf %lf\n", i, tRobotCurCoord.dX, tRobotCurCoord.dY, tRobotCurCoord.dZ);
     fclose(CoutTeachPoint);
     i++;
-	XUI::MesBox::PopInfo("µÚ£º{0} ´Î²É¼¯Î»ÖÃÍê³É", i);
+	XUI::MesBox::PopInfo("ç¬¬ï¼š{0} æ¬¡é‡‡é›†ä½ç½®å®Œæˆ", i);
     return;
 }
 
 void CAssemblyWeld::OnBnClickedButtonStart()
 {
-	WriteLog("µ¥»÷£º×Ô¶¯º¸½Ó");
+	WriteLog("å•å‡»ï¼šè‡ªåŠ¨ç„Šæ¥");
 	//OutputDebugString("Hello!!!");
 	if (true == m_bAutoWeldWorking)
 	{
-		XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜÖØ¸´¿ªÆô!");
+		XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½é‡å¤å¼€å¯!");
 		return;
 	}
 	if (!RunPara::GetInstance().loadAllPara())
 	{
-		XUI::MesBox::PopError("¶ÁÈ¡ÔËĞĞ²ÎÊıÊ§°Ü£¡");
+		XUI::MesBox::PopError("è¯»å–è¿è¡Œå‚æ•°å¤±è´¥ï¼");
 		return;
 	}
 	WinExec("del_pic.bat", SW_SHOW);
@@ -2665,7 +2717,7 @@ void CAssemblyWeld::OnBnClickedButtonStart()
 		m_vpUnit[i]->GetRobotCtrl()->m_eThreadStatus = INCISEHEAD_THREAD_STATUS_START;
 	}
 
-	//ÊµÌå¸ú×Ù½öÏŞÈ«É¨Ãè¿ªÆôÊ±¿ÉÓÃ
+	//å®ä½“è·Ÿè¸ªä»…é™å…¨æ‰«æå¼€å¯æ—¶å¯ç”¨
 	if (m_tChoseWorkPieceType != E_SCAN_WELD_LINE)
 		PARA_SYSTEM(bScanTrackingWeldEnable) = false;
 
@@ -2686,12 +2738,12 @@ bool CAssemblyWeld::LoadGroupingResult(CString sFileName/* = ""*/)
 	FILE* pf = fopen(sOutFileName.GetBuffer(), "r");
 	if (NULL == pf)
 	{
-		XUI::MesBox::PopOkCancel("¼ÓÔØµãÔÆ´¦Àí½á¹ûÎÄ¼ş {0} ´ò¿ªÊ§°Ü", sOutFileName);
+		XUI::MesBox::PopOkCancel("åŠ è½½ç‚¹äº‘å¤„ç†ç»“æœæ–‡ä»¶ {0} æ‰“å¼€å¤±è´¥", sOutFileName);
 		return false;
 	}
 
-	std::vector<LineOrCircularArcWeldingLine> vtWeldSeamData; // µãÔÆ´¦ÀíµÃµ½µÄº¸·ìĞÅÏ¢
-	std::vector<WeldLineInfo> vtWeldSeamInfo; // °üÀ¨Ê¶±ğ½á¹û¼°º¸½ÅµÈÎŞ·¨Ê¶±ğµÄÊôĞÔĞÅÏ¢
+	std::vector<LineOrCircularArcWeldingLine> vtWeldSeamData; // ç‚¹äº‘å¤„ç†å¾—åˆ°çš„ç„Šç¼ä¿¡æ¯
+	std::vector<WeldLineInfo> vtWeldSeamInfo; // åŒ…æ‹¬è¯†åˆ«ç»“æœåŠç„Šè„šç­‰æ— æ³•è¯†åˆ«çš„å±æ€§ä¿¡æ¯
 	m_vvvtWeldSeamData.clear();
 	m_vvvtWeldSeamInfo.clear();
 	m_vvvtWeldSeamData.resize(m_vpRobotDriver.size());
@@ -2699,8 +2751,8 @@ bool CAssemblyWeld::LoadGroupingResult(CString sFileName/* = ""*/)
 	//m_vtWeldSeamData.clear();
 	//m_vtWeldSeamInfo.clear();
 
-	std::vector < std::vector<LineOrCircularArcWeldingLine>> vvtWeldSeamData1; // ¶à»úµãÔÆ´¦ÀíµÃµ½µÄº¸·ìĞÅÏ¢
-	std::vector < std::vector<WeldLineInfo>> vvtWeldSeamInfo1; // ¶à»ú°üÀ¨Ê¶±ğ½á¹û¼°º¸½ÅµÈÎŞ·¨Ê¶±ğµÄÊôĞÔĞÅÏ¢
+	std::vector < std::vector<LineOrCircularArcWeldingLine>> vvtWeldSeamData1; // å¤šæœºç‚¹äº‘å¤„ç†å¾—åˆ°çš„ç„Šç¼ä¿¡æ¯
+	std::vector < std::vector<WeldLineInfo>> vvtWeldSeamInfo1; // å¤šæœºåŒ…æ‹¬è¯†åˆ«ç»“æœåŠç„Šè„šç­‰æ— æ³•è¯†åˆ«çš„å±æ€§ä¿¡æ¯
 
 	int nIdx = 0;
 	bool m = 0;
@@ -2785,7 +2837,7 @@ bool CAssemblyWeld::LoadGroupingResult(CString sFileName/* = ""*/)
 			}
 		}
 	}
-	// Êä³ö·Ö×éºóÊı¾İ±ãÓÚ²é¿´
+	// è¾“å‡ºåˆ†ç»„åæ•°æ®ä¾¿äºæŸ¥çœ‹
 	for (size_t i = 0; i < m_vvvtWeldSeamInfo.size(); i++)
 	{
 		for (int nRb = 0; nRb < m_vpRobotDriver.size(); nRb++)
@@ -2831,12 +2883,12 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	FILE* pf = fopen(sOutFileName.GetBuffer(), "r");
 	if (NULL == pf)
 	{
-		XUI::MesBox::PopOkCancel("¼ÓÔØµãÔÆ´¦Àí½á¹ûÎÄ¼ş {0} ´ò¿ªÊ§°Ü", sOutFileName);
+		XUI::MesBox::PopOkCancel("åŠ è½½ç‚¹äº‘å¤„ç†ç»“æœæ–‡ä»¶ {0} æ‰“å¼€å¤±è´¥", sOutFileName);
 		return false;
 	}
 
-	std::vector<LineOrCircularArcWeldingLine> vtWeldSeamData; // µãÔÆ´¦ÀíµÃµ½µÄº¸·ìĞÅÏ¢
-	std::vector<WeldLineInfo> vtWeldSeamInfo; // °üÀ¨Ê¶±ğ½á¹û¼°º¸½ÅµÈÎŞ·¨Ê¶±ğµÄÊôĞÔĞÅÏ¢
+	std::vector<LineOrCircularArcWeldingLine> vtWeldSeamData; // ç‚¹äº‘å¤„ç†å¾—åˆ°çš„ç„Šç¼ä¿¡æ¯
+	std::vector<WeldLineInfo> vtWeldSeamInfo; // åŒ…æ‹¬è¯†åˆ«ç»“æœåŠç„Šè„šç­‰æ— æ³•è¯†åˆ«çš„å±æ€§ä¿¡æ¯
 	m_vvvtWeldSeamData.clear();
 	m_vvvtWeldSeamInfo.clear();
 	m_vvvtWeldSeamData.resize(m_vpRobotDriver.size());
@@ -2844,8 +2896,8 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	//m_vtWeldSeamData.clear();
 	//m_vtWeldSeamInfo.clear();
 
-	std::vector < std::vector<LineOrCircularArcWeldingLine>> vvtWeldSeamData1; // ¶à»úµãÔÆ´¦ÀíµÃµ½µÄº¸·ìĞÅÏ¢
-	std::vector < std::vector<WeldLineInfo>> vvtWeldSeamInfo1; // ¶à»ú°üÀ¨Ê¶±ğ½á¹û¼°º¸½ÅµÈÎŞ·¨Ê¶±ğµÄÊôĞÔĞÅÏ¢
+	std::vector < std::vector<LineOrCircularArcWeldingLine>> vvtWeldSeamData1; // å¤šæœºç‚¹äº‘å¤„ç†å¾—åˆ°çš„ç„Šç¼ä¿¡æ¯
+	std::vector < std::vector<WeldLineInfo>> vvtWeldSeamInfo1; // å¤šæœºåŒ…æ‹¬è¯†åˆ«ç»“æœåŠç„Šè„šç­‰æ— æ³•è¯†åˆ«çš„å±æ€§ä¿¡æ¯
 
 	int nIdx = 0;
 	bool m = 0;
@@ -2982,7 +3034,7 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
   void CAssemblyWeld::ShowTeachImageOn(CWnd* pParent, const std::vector<int>& drawIds)
   {
 	  if (!pParent || !::IsWindow(pParent->m_hWnd)) return;
-	  CDialog* pDlg = static_cast<CDialog*>(pParent);   // ¹Ø¼ü£º¸Ä³É CDialog*
+	  CDialog* pDlg = static_cast<CDialog*>(pParent);   // å…³é”®ï¼šæ”¹æˆ CDialog*
 
 	  const int nBuffSize = (int)m_vpShowLaserImgBuff.size();
 	  const int nDraw = (int)drawIds.size();
@@ -3003,9 +3055,9 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	  IplImage* pImg0 = m_vpShowLaserImgBuff[0];
 	  if (!pImg0 || pImg0->imageData[0] < 0) return;
 
-	  // ¹Ø¼ü£ºCWnd* ¡ú CDialog*
+	  // å…³é”®ï¼šCWnd* â†’ CDialog*
 	  CDialog* pDlg = DYNAMIC_DOWNCAST(CDialog, pParent);
-	  if (!pDlg) return;                // ±£ÏÕ£ºÈ·±£ÕæµÄÊÇ¶Ô»°¿ò/×ÓÒ³
+	  if (!pDlg) return;                // ä¿é™©ï¼šç¡®ä¿çœŸçš„æ˜¯å¯¹è¯æ¡†/å­é¡µ
 
 	  DrawImage(pImg0, pDlg, ctrlId, bDrawCross);
   }
@@ -3042,45 +3094,45 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
      E_CAM_ID eCamId;
      CRobotDriverAdaptor *pRobotCtrl;
      
-     if (IDOK == XiMessageBoxGroup(1, "×ó»úÆ÷ÈËÔËĞĞ£¿"))
+     if (IDOK == XiMessageBoxGroup(1, "å·¦æœºå™¨äººè¿è¡Œï¼Ÿ"))
      {
          pRobotCtrl = m_vpRobotDriver[0];;
-         if (IDOK == XiMessageBox("×ó×óÏà»ú²âÁ¿"))
+         if (IDOK == XiMessageBox("å·¦å·¦ç›¸æœºæµ‹é‡"))
          {
              eCamId = E_LEFT_ROBOT_LEFT_CAM_H;
 
          }
-         else if (IDOK == XiMessageBox("×óÓÒÏà»ú²âÁ¿"))
+         else if (IDOK == XiMessageBox("å·¦å³ç›¸æœºæµ‹é‡"))
          {
              eCamId = E_LEFT_ROBOT_RIGHT_CAM_H;
          }
          else
          {
-             XiMessageBox("ÇëÑ¡ÔñÏà»ú");
+             XiMessageBox("è¯·é€‰æ‹©ç›¸æœº");
              return;
          }
      }
-     else if (IDOK == XiMessageBoxGroup(1, "ÓÒ»úÆ÷ÈËÔËĞĞ£¿"))
+     else if (IDOK == XiMessageBoxGroup(1, "å³æœºå™¨äººè¿è¡Œï¼Ÿ"))
      {
          pRobotCtrl = m_vpRobotDriver[1];;
-         if (IDOK == XiMessageBox("ÓÒ×óÏà»ú²âÁ¿"))
+         if (IDOK == XiMessageBox("å³å·¦ç›¸æœºæµ‹é‡"))
          {
              eCamId = E_RIGHT_ROBOT_LEFT_CAM_H;
 
          }
-         else if (IDOK == XiMessageBox("ÓÒÓÒÏà»ú²âÁ¿"))
+         else if (IDOK == XiMessageBox("å³å³ç›¸æœºæµ‹é‡"))
          {
              eCamId = E_RIGHT_ROBOT_RIGHT_CAM_H;
          }
          else
          {
-             XiMessageBox("ÇëÑ¡ÔñÏà»ú");
+             XiMessageBox("è¯·é€‰æ‹©ç›¸æœº");
              return;
          }
      }
      else
      {
-         XiMessageBoxGroup(1, "Î´Ñ¡Ôñ»úÆ÷ÈË");
+         XiMessageBoxGroup(1, "æœªé€‰æ‹©æœºå™¨äºº");
          return;
      }
      testCompenWithPara(pRobotCtrl, eCamId);*/
@@ -3123,7 +3175,7 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 int  nWeldInfoNum = 0;
 	 int nPtnNum;
 
-	 // ¶ÁÈ¡ÊäÈë²ÎÊı
+	 // è¯»å–è¾“å…¥å‚æ•°
 	 int nImageNo = 0;
 	 int nPtnNo = 0;
 	 Three_DPoint tPtn;
@@ -3170,18 +3222,18 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 }
 	 catch (...)
 	 {
-		 XUI::MesBox::PopOkCancel("µãÔÆ´¦ÀíÒì³£! Í¼ºÅ{0}-{1}", nImageNoS, nImageNoE);
+		 XUI::MesBox::PopOkCancel("ç‚¹äº‘å¤„ç†å¼‚å¸¸! å›¾å·{0}-{1}", nImageNoS, nImageNoE);
 		 return;
 	 }
 
-	 XUI::MesBox::PopInfo("´¦Àí½á¹ûÊıÁ¿£º{0}", nWeldInfoNum);
+	 XUI::MesBox::PopInfo("å¤„ç†ç»“æœæ•°é‡ï¼š{0}", nWeldInfoNum);
 	 if (nWeldInfoNum<=0)
 	 {
 		 return;
 	 }
 
-	 CvPoint3D32f tPtnS = tWeldInfo[0].staPnt; // Ö»Ó°Ïì´¦Àí½á¹ûµÄµãË³Ğò
-	 CvPoint3D32f tPtnE = tWeldInfo[0].endPnt; // Ö»Ó°Ïì´¦Àí½á¹ûµÄµãË³Ğò
+	 CvPoint3D32f tPtnS = tWeldInfo[0].staPnt; // åªå½±å“å¤„ç†ç»“æœçš„ç‚¹é¡ºåº
+	 CvPoint3D32f tPtnE = tWeldInfo[0].endPnt; // åªå½±å“å¤„ç†ç»“æœçš„ç‚¹é¡ºåº
 	 FILE* pfOut = fopen(sRecoResultFile.GetBuffer(), "w");
 	 fprintf(pfOut, "%d %4d%4d%11.3lf%4d%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%4d%4d 0 0 0 %4d%11.3lf%11.3lf 0\n",
 		 0, 0, 0, 0.0, true,
@@ -3220,13 +3272,13 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 sPointCloudFile = OpenFileDlg(this, _T("*"), "./");
 	 //sPointCloudFile = UnicodeToUtf8(sPointCloudFile.GetBuffer());
 
-	 // µ¯´°±êÌâ
-	 CString cStrTitle = "ÊäÈë¿ªÊ¼ºÍ½áÊøÍ¼ºÅ";
-	 // ²ÎÊıµÄÖĞÎÄÃû³Æ
+	 // å¼¹çª—æ ‡é¢˜
+	 CString cStrTitle = "è¾“å…¥å¼€å§‹å’Œç»“æŸå›¾å·";
+	 // å‚æ•°çš„ä¸­æ–‡åç§°
 	 std::vector<CString> vsInputName;
-	 vsInputName.push_back("¿ªÊ¼Í¼ºÅ");
-	 vsInputName.push_back("½áÊøÍ¼ºÅ");
-	 vsInputName.push_back("µ¹¹Ò0Õı×ù1");
+	 vsInputName.push_back("å¼€å§‹å›¾å·");
+	 vsInputName.push_back("ç»“æŸå›¾å·");
+	 vsInputName.push_back("å€’æŒ‚0æ­£åº§1");
 	 std::vector<double> vnInputData;
 	 vnInputData.push_back(nImageNoS);
 	 vnInputData.push_back(nImageNoE);
@@ -3247,12 +3299,12 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 std::map<int, vector<Three_DPoint>> mntPoints;
 	 mntPoints.clear();
 
-	 // ¶ÁÈ¡ÊäÈë²ÎÊı
+	 // è¯»å–è¾“å…¥å‚æ•°
 	 int nImageNo = 0;
 	 int nPtnNo = 0;
 	 Three_DPoint tPtn;
 	 FILE* pf = fopen(sPointCloudFile.GetBuffer(), "r");
-	 while (EOF != fscanf(pf, "Í¼ºÅ:%d µãºÅ%d %lf%lf%lf\n", &nImageNo, &nPtnNo, &tPtn.x, &tPtn.y, &tPtn.z))
+	 while (EOF != fscanf(pf, "å›¾å·:%d ç‚¹å·%d %lf%lf%lf\n", &nImageNo, &nPtnNo, &tPtn.x, &tPtn.y, &tPtn.z))
 	 {
 		 std::map<int, vector<Three_DPoint>>::iterator iter = mntPoints.find(nImageNo);
 		 if (iter != mntPoints.end())
@@ -3276,7 +3328,7 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 Three_DPoint* pThreeDPoint = vtPtns.data();
 	 int nPtnNum = vtPtns.size();
 	 int nResultPtnNum = 0;
-	 Three_DPoint tScanVector = { 1.0, 0.0, 0.0 }; // Ö»Ó°Ïì´¦Àí½á¹ûµÄµãË³Ğò
+	 Three_DPoint tScanVector = { 1.0, 0.0, 0.0 }; // åªå½±å“å¤„ç†ç»“æœçš„ç‚¹é¡ºåº
 
 	 FILE* pf2 = fopen(sPartCloudFile.GetBuffer(), "w");
 	 for (int i = 0; i < nPtnNum; i++)
@@ -3291,14 +3343,14 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 }
 	 catch (...)
 	 {
-		 XUI::MesBox::PopOkCancel("µãÔÆ´¦ÀíÒì³£! Í¼ºÅ{0}-{1}", nImageNoS, nImageNoE);
+		 XUI::MesBox::PopOkCancel("ç‚¹äº‘å¤„ç†å¼‚å¸¸! å›¾å·{0}-{1}", nImageNoS, nImageNoE);
 		 return;
 	 }
 
-	 XUI::MesBox::PopInfo("´¦Àí½á¹ûÊıÁ¿£º{0}", nResultPtnNum);
+	 XUI::MesBox::PopInfo("å¤„ç†ç»“æœæ•°é‡ï¼š{0}", nResultPtnNum);
 
-	 Three_DPoint tPtnS = ptResult[0]; // Ö»Ó°Ïì´¦Àí½á¹ûµÄµãË³Ğò
-	 Three_DPoint tPtnE = ptResult[nResultPtnNum - 1]; // Ö»Ó°Ïì´¦Àí½á¹ûµÄµãË³Ğò
+	 Three_DPoint tPtnS = ptResult[0]; // åªå½±å“å¤„ç†ç»“æœçš„ç‚¹é¡ºåº
+	 Three_DPoint tPtnE = ptResult[nResultPtnNum - 1]; // åªå½±å“å¤„ç†ç»“æœçš„ç‚¹é¡ºåº
 	 FILE* pfOut = fopen(sRecoResultFile.GetBuffer(), "w");
 	 fprintf(pfOut, "%d %4d%4d%11.3lf%4d%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%11.3lf%4d%4d 0 0 0 %4d%11.3lf%11.3lf 0\n",
 		 0, 0, 0, 0.0, true,
@@ -3347,21 +3399,21 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	// long long nptime = XI_clock();
 	// findConner.FindCrossPntAndTwoLines2(pImage, 1,
 	//	 tTeachResult.tKeyPtn2D, tTeachResult.vtLeftPtns2D, tTeachResult.vtRightPtns2D, 150, 180, 0, 2000, 1, 0, 2);
-	//XiMessageBoxOk("ÌáÈ¡¼¤¹âµãFindCrossPntAndTwoLines2ÓÃÊ±%d", XI_clock() - nptime);
+	//XiMessageBoxOk("æå–æ¿€å…‰ç‚¹FindCrossPntAndTwoLines2ç”¨æ—¶%d", XI_clock() - nptime);
 	//return;
 
-	/* if (IDOK == XiMessageBox("×óÓÒ·­×ªÍ¼Æ¬£¿"))
+	/* if (IDOK == XiMessageBox("å·¦å³ç¿»è½¬å›¾ç‰‡ï¼Ÿ"))
 	 {
 		 cvFlip(pImage, pImage, 1);
 	 }*/
 	 bool bFil = false;
-	 if (IDOK == XiMessageBox("ÉÏÏÂ·­×ªÍ¼Æ¬£¿"))
+	 if (IDOK == XiMessageBox("ä¸Šä¸‹ç¿»è½¬å›¾ç‰‡ï¼Ÿ"))
 	 {
 		 cvFlip(pImage, pImage, 0);
 		 bFil = true;
 	 }
 
-	 // µ÷ÓÃ ´¦Àí½ÇµãºÍÁ½Ìõ¼¤¹âÏßÉÏµÄµã½Ó¿Ú´¦Àí»ñÈ¡Ëø¶¨ĞèÒªµÄÊı¾İ
+	 // è°ƒç”¨ å¤„ç†è§’ç‚¹å’Œä¸¤æ¡æ¿€å…‰çº¿ä¸Šçš„ç‚¹æ¥å£å¤„ç†è·å–é”å®šéœ€è¦çš„æ•°æ®
 	 CvPoint cpMidKeyPoint;
 	 CvPoint cpBesideKeyPoint;
 	 vector<CvPoint> vtLeftPtns;
@@ -3378,7 +3430,7 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 XiLineParamNode tFrontLine, tBackLine;
 	 ImageProcess.InitIfStartOrEndPntParam(GROUP_STAND_DIP_NS::E_PIECE_START); Sleep(50);
 
-	 // Ìæ´úÔ­Ëø¶¨º¯Êı GetGroupStandKeyPoint
+	 // æ›¿ä»£åŸé”å®šå‡½æ•° GetGroupStandKeyPoint
 	 tKeyPoint = ImageProcess.HandlockKeyPoint(cpMidKeyPoint, LeftPtn, RightPtn, tFrontLine, tBackLine);
 	 //tKeyPoint = pImageProcess->GetGroupStandKeyPoint(pImage, tFrontLine, tBackLine, true, false, false, true);
 
@@ -3446,7 +3498,7 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 	 bool bIsNumber = sNo[0] > 0 && isdigit(sNo[0] % 255);
 
 	 bool bContinueProc = false;
-	 if (1 == XiMessageBox("Á¬Ğø´¦Àí?"))
+	 if (1 == XiMessageBox("è¿ç»­å¤„ç†?"))
 	 {
 		 bContinueProc = true;
 	 }
@@ -3487,10 +3539,10 @@ bool CAssemblyWeld::LoadCloudProcessResultMultiMachine(CString sFileName/* = ""*
 			 //tPoints[nLength++] = Info->BottomLinePnts[i];
 			 cvCircle(m_vpShowLaserImgBuff[0], Info->BottomLinePnts[i], 3, CV_RGB(0, 0, 255), 1);
 		 }
-		 pRobotDriver->m_cLog->Write("[µãÔÆËÑ¶Ëµã]:´¦ÀíÍ¼ºÅ%d ResultNum: %d %d %d", i, Info->HPntsNum, Info->GPntsNum, Info->BPntsNum);
+		 pRobotDriver->m_cLog->Write("[ç‚¹äº‘æœç«¯ç‚¹]:å¤„ç†å›¾å·%d ResultNum: %d %d %d", i, Info->HPntsNum, Info->GPntsNum, Info->BPntsNum);
 		 delete Info;
 		 long lProcessTime = GetTickCount() - lTime;
-		 WriteLog("Í¼Æ¬%d ºÄÊ±%dms", i, GetTickCount() - lTime);
+		 WriteLog("å›¾ç‰‡%d è€—æ—¶%dms", i, GetTickCount() - lTime);
 		 sFilePath.Format("%s\\Pro_%d_%s.jpg", saveDirectory, i, 1 == nRst ? "Y" : "N");
 		 ShowTeachImage(m_vpShowLaserImgBuff[0]);
 		 SaveImage(m_vpShowLaserImgBuff[0], sFilePath);
@@ -3531,7 +3583,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	 bool bIsNumber = sNo[0] > 0 && isdigit(sNo[0] % 255);
 
 	 bool bContinueProc = false;
-	 if (1 == XiMessageBox("Á¬Ğø´¦Àí?"))
+	 if (1 == XiMessageBox("è¿ç»­å¤„ç†?"))
 	 {
 		 bContinueProc = true;
 	 }
@@ -3552,13 +3604,13 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 
 		 if (1 == nProcMethod)
 		 {
-			 // ¼¤¹âÖĞĞÄµãÌáÈ¡½Ó¿Ú1
+			 // æ¿€å…‰ä¸­å¿ƒç‚¹æå–æ¥å£1
 			 GetLaserPointFromImageX(pImage, LINE_SCAN_BINARY_THRESHOLD,
 				 LINE_SCAN_STEP_2D_POINT, LINE_SCAN_LASER_WIDTH, vtPoints);
 		 }
 		 else if (2 == nProcMethod)
 		 {
-			 // ¼¤¹âÖĞĞÄµãÌáÈ¡½Ó¿Ú2
+			 // æ¿€å…‰ä¸­å¿ƒç‚¹æå–æ¥å£2
 			 CvPoint* ptPtns = new CvPoint[10000];
 			 CvPoint tROILeftTop = cvPoint(0, 0);
 			 CvPoint tROIRightBottom = cvPoint(pImage->width, pImage->height);
@@ -3595,9 +3647,9 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 		 {
 			 fprintf(pf, "%d%11.3lf%11.3lf%11.3lf\n", i, vtResult[i].dX + vtResult[i].dBX, vtResult[i].dY + vtResult[i].dBY, vtResult[i].dZ + vtResult[i].dBZ);
 		 }
-		 pRobotDriver->m_cLog->Write("[µãÔÆËÑ¶Ëµã]:´¦ÀíÍ¼ºÅ%d ResultNum: %d", i, vtPoints.size());
+		 pRobotDriver->m_cLog->Write("[ç‚¹äº‘æœç«¯ç‚¹]:å¤„ç†å›¾å·%d ResultNum: %d", i, vtPoints.size());
 		 long lProcessTime = GetTickCount() - lTime;
-		 WriteLog("Í¼Æ¬%d ºÄÊ±%dms", i, GetTickCount() - lTime);
+		 WriteLog("å›¾ç‰‡%d è€—æ—¶%dms", i, GetTickCount() - lTime);
 		 sFilePath.Format("%s\\Pro_%d.jpg", saveDirectory, i);
 		 ShowTeachImage(pShowImage);
 		 SaveImage(pShowImage, sFilePath);
@@ -3638,13 +3690,13 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	 bool bPop = false;
 	 if (bIsNumber)
 	 {
-		bPop = 1 == XiMessageBox("µ¯´°È·ÈÏ£¿");
+		bPop = 1 == XiMessageBox("å¼¹çª—ç¡®è®¤ï¼Ÿ");
 	 }
 	 int nLinePtnNum = 5;
 
 	 bool bIsFlip = false;
 	 int nRefLineNo = 0;
-	 if (1 == XiMessageBox("´¦Àí·­×ªÍ¼Ïñ£¿"))
+	 if (1 == XiMessageBox("å¤„ç†ç¿»è½¬å›¾åƒï¼Ÿ"))
 	 {
 		 bIsFlip = true;
 		 nRefLineNo = 0;
@@ -3662,14 +3714,14 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 		 vector<CvPoint> vtLeftPtns;
 		 vector<CvPoint> vtRightPtns;
 		 FlipImage(pImage, pUnit->GetCameraParam(pUnit->m_nMeasureCameraNo).eFlipMode);
-		 // Í³Ò»´¦Àí½Ó¿Ú £¨²âÊÔÇ°Òª±£Ö¤£¬ÒªÇó½ÇµãÔÚÉÏ£¬Á½¸ö¼¤¹âÏßÔÚÏÂ(²âÁ¢°åÉÏ¶ÏÃæĞèÒªÉÏÏÂ·­×ª)£©
+		 // ç»Ÿä¸€å¤„ç†æ¥å£ ï¼ˆæµ‹è¯•å‰è¦ä¿è¯ï¼Œè¦æ±‚è§’ç‚¹åœ¨ä¸Šï¼Œä¸¤ä¸ªæ¿€å…‰çº¿åœ¨ä¸‹(æµ‹ç«‹æ¿ä¸Šæ–­é¢éœ€è¦ä¸Šä¸‹ç¿»è½¬)ï¼‰
 		 long long lTimeS = XI_clock();
 		 ImageProcess.GetBesideKeyPoints(pImage, cpMidKeyPoint, cpBesideKeyPoint, vtLeftPtns, vtRightPtns, false,
 			 500, 500,
 			 300, 300,
 			 20, 20, bIsFlip, nRefLineNo);
 		 long long lTimeE = XI_clock();
-		 WriteLog("Í¼Ïñ%d ´¦ÀíºÄÊ±%dms", nImageNo, lTimeE - lTimeS);
+		 WriteLog("å›¾åƒ%d å¤„ç†è€—æ—¶%dms", nImageNo, lTimeE - lTimeS);
 
 		 cvCvtColor(pImage, pColorImg, CV_GRAY2RGB);
 		 cvCircle(pColorImg, cpMidKeyPoint, 10, CV_RGB(255, 0, 0), 3);
@@ -3689,7 +3741,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 		 int nPopRst = 0;
 		 if (bPop)
 		 {
-			 nPopRst = AfxMessageBox("µÚ%dÕÅÍ¼´¦ÀíÕı³£?", MB_YESNOCANCEL);
+			 nPopRst = AfxMessageBox("ç¬¬%då¼ å›¾å¤„ç†æ­£å¸¸?", MB_YESNOCANCEL);
 		 }
 
 		 if (bPop && IDCANCEL == nPopRst)
@@ -3714,9 +3766,9 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 
 		 cvReleaseImage(&pImage);
 		 cvReleaseImage(&pColorImg);
-		 sFileName.Format("%s%d.jpg", sFilePath, ++nImageNo);//Í¼Æ¬Â·¾¶
+		 sFileName.Format("%s%d.jpg", sFilePath, ++nImageNo);//å›¾ç‰‡è·¯å¾„
 	 } while (bIsNumber && CheckFileExists(sFileName, false));
-	 SetHintInfo("´¦Àí²âÊÔ½áÊø");
+	 SetHintInfo("å¤„ç†æµ‹è¯•ç»“æŸ");
 	 return;
  }
 
@@ -3742,28 +3794,28 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	 vector<CvPoint> vtLeftPtns;
 	 vector<CvPoint> vtRightPtns;
 
-	 if (IDOK == XiMessageBox("×óÓÒ·­×ªÍ¼Æ¬£¿"))
+	 if (IDOK == XiMessageBox("å·¦å³ç¿»è½¬å›¾ç‰‡ï¼Ÿ"))
 	 {
 		 cvFlip(pImage, pImage, 1);
 	 }
 	 bool bFil = false;
-	 if (IDOK == XiMessageBox("ÉÏÏÂ·­×ªÍ¼Æ¬£¿"))
+	 if (IDOK == XiMessageBox("ä¸Šä¸‹ç¿»è½¬å›¾ç‰‡ï¼Ÿ"))
 	 {
 		 cvFlip(pImage, pImage, 0);
 		 bFil = true;
 	 }
 
-	 int nFirstRefLineNo = 1;  // Ä¬ÈÏÊ¹ÓÃÓÒ²à²Î¿¼Ïß1 
-	 int nSecondRefLineNo = 0; // Ê¹ÓÃÄ¬ÈÏ²Î¿¼Ïß´¦ÀíÊ§°ÜºóÊ¹ÓÃ×ó²à²Î¿¼Ïß0
+	 int nFirstRefLineNo = 1;  // é»˜è®¤ä½¿ç”¨å³ä¾§å‚è€ƒçº¿1 
+	 int nSecondRefLineNo = 0; // ä½¿ç”¨é»˜è®¤å‚è€ƒçº¿å¤„ç†å¤±è´¥åä½¿ç”¨å·¦ä¾§å‚è€ƒçº¿0
 	 ImageProcess.m_nShowImage = false;
-	 // Í³Ò»´¦Àí½Ó¿Ú £¨²âÊÔÇ°Òª±£Ö¤£¬ÒªÇó½ÇµãÔÚÉÏ£¬Á½¸ö¼¤¹âÏßÔÚÏÂ(²âÁ¢°åÉÏ¶ÏÃæĞèÒªÉÏÏÂ·­×ª)£©
+	 // ç»Ÿä¸€å¤„ç†æ¥å£ ï¼ˆæµ‹è¯•å‰è¦ä¿è¯ï¼Œè¦æ±‚è§’ç‚¹åœ¨ä¸Šï¼Œä¸¤ä¸ªæ¿€å…‰çº¿åœ¨ä¸‹(æµ‹ç«‹æ¿ä¸Šæ–­é¢éœ€è¦ä¸Šä¸‹ç¿»è½¬)ï¼‰
 	 long long tTime = XI_clock();
 	 ImageProcess.GetBesideKeyPoints(pImage, cpMidKeyPoint, cpBesideKeyPoint, vtLeftPtns, vtRightPtns, false,
 		 500, 500,
 		 300, 300,
 		 20, 20, bFil);
-	 WriteLog("GetBesideKeyPoints´¦ÀíÊ±¼ä£º%d", XI_clock() - tTime);
-	 XUI::MesBox::PopOkCancel("GetBesideKeyPoints´¦ÀíÊ±¼ä£º{0}", XI_clock() - tTime);
+	 WriteLog("GetBesideKeyPointså¤„ç†æ—¶é—´ï¼š%d", XI_clock() - tTime);
+	 XUI::MesBox::PopOkCancel("GetBesideKeyPointså¤„ç†æ—¶é—´ï¼š{0}", XI_clock() - tTime);
 	 //pImgProcess->GetBesideKeyPoints(pImg, tKeyPoint, tBesideKeyPoint, vLeftPtn, vRightPtn, false,
 		// 500, 500,
 		// 300, 300,
@@ -3819,7 +3871,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 
 	 //if (2 != vtOutPutPtns.size())
 	 //{
-		// XiMessageBox("²âºñÕÒµãº¯Êı´¦ÀíÊ§°Ü£¡µãÊı %d ", vtOutPutPtns.size());
+		// XiMessageBox("æµ‹åšæ‰¾ç‚¹å‡½æ•°å¤„ç†å¤±è´¥ï¼ç‚¹æ•° %d ", vtOutPutPtns.size());
 	 //}
 	 //return;
  }
@@ -3830,7 +3882,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	 vtCirclePtns.clear();
 	 if (dTotalAngle > 360.0 || dTotalAngle <= 0.0)
 	 {
-		 dTotalAngle = 360.0; // ·ÇÕı³£ÊäÈë Êä³öÕû¸öÔ²¹ì¼£
+		 dTotalAngle = 360.0; // éæ­£å¸¸è¾“å…¥ è¾“å‡ºæ•´ä¸ªåœ†è½¨è¿¹
 	 }
 	 XI_POINT tCircleCenterPtn;
 	 tCircleCenterPtn.x = tStartPtn.x + (dRadius * CosD(dFirstPtnDirAngle + 180.0));
@@ -3857,7 +3909,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
  void CAssemblyWeld::testCompenWithPara(CRobotDriverAdaptor *pRobotCtrl, E_CAM_ID camId)
  {
 #if 0
-     // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+     // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 int nRobotNo = pRobotCtrl->m_nRobotNo;
      E_CAM_ID eCamId = camId;
      T_ABS_POS_IN_BASE tPointAbsCoordInBase;
@@ -4043,7 +4095,7 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
      }
 
      XiMessageBox("%11.3lf%11.3lf%11.3lf%11.3lf", dMinDis, dMinXAdjust, dMinYAdjust, dMinZAdjust);
-     WriteLog("ÊÖÑÛĞ£ÑéÊı¾İ£º%11.3lf%11.3lf%11.3lf%11.3lf", dMinDis, dMinXAdjust, dMinYAdjust, dMinZAdjust);
+     WriteLog("æ‰‹çœ¼æ ¡éªŒæ•°æ®ï¼š%11.3lf%11.3lf%11.3lf%11.3lf", dMinDis, dMinXAdjust, dMinYAdjust, dMinZAdjust);
 
      vtAbsPosInBase.clear();
      for (nPointNo = 0; nPointNo < nPointNum; nPointNo++)
@@ -4116,23 +4168,23 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 
  void CAssemblyWeld::TestContiSwaySpot()
  {
-	 //// Á¬Ğø°Ú¶¯µãº¸(¿É²»°Ú¶¯) ÔË¶¯Ë³Ğò Î»ÖÃ1 -¡·Î»ÖÃ2 -¡·Î»ÖÃ3 -¡·Ì§¸ßÎ»ÖÃ1 -¡·Ì§¸ßÎ»ÖÃ2 -¡·Ì§¸ßÎ»ÖÃ3 ¡­¡­
-	 //// I003£ºJobÄÚ¿ªÍ·ĞŞ¸Ä£ºÆğ»¡¿ª¹Ø(Ä¬ÈÏ0²»Æğ»¡) 1:Æğ»¡   0:²»Æğ»¡
-	 //// I004£ºÒÆ¶¯ËÙ¶È(µ¥Î»:6mm/min)
-	 //// I005£ºµçÁ÷ (A)
-	 //// I006£ºµçÑ¹ (V)
-	 //// I007£ºµãº¸Ê±¼ä(µ¥Î»£º0.01s) 
-	 //// I008£ºÏàÁÚ°Ú¶¯Ñ­»·Ì§¸ß¾àÀë(µ¥Î»£º0.1mm)
-	 //// P110£ºº¸½ÓÆğµã 
-	 //// P111£ºº¸½ÓÖÕµã 
-	 //// P112£ºÎ»ÖÃ1Æ«ÒÆÁ¿ 
-	 //// P113£ºÎ»ÖÃ2Æ«ÒÆÁ¿ 
-	 //// P114£ºÎ»ÖÃ3Æ«ÒÆÁ¿   
-	 ////	Èı¸öÆ«ÒÆÎ»ÖÃËµÃ÷£ºX:¸ÉÉì³¤  Y:×óÓÒ°Ú·ù Z:Ïà¶ÔÓÚÖĞ¼äµãµÄÌ§¸ß¾àÀë Rz:×óÓÒ°Ú¶¯Rz±ä»¯Öµ
-	 //// 	X:¸ÉÉì³¤¶È(mm)£ºÔö¼ÓÏòº¸·ìÍâÒÆ¶¯ ¼õĞ¡Ïòº¸·ìÀïÒÆ¶¯
-	 ////		Y:°Ú¶¯·ù¶È(mm)£ºÔÚº¸Ë¿½Ç¶È¿´ ¸ºÊı:Ïò×ó°Ú¶¯ ÕıÊı:ÏòÓÒ°Ú¶¯
-	 ////		Z:Ì§¸ß¾àÀë(mm)£ºÒ»¸ö°Ú¶¯Ñ­»·ÄÚ ¸÷Î»ÖÃÏà¶ÔÓë»ù×¼Î»ÖÃµÄ¸ß¶ÈÆ«ÒÆ
-	 ////		Rz£º°Ú¶¯Í¬Ê±Rz±ä»¯(¡ã)£º½¨Òé Ïò×ó°Ú¶¯(YÖµÕıÊı)RzÎªÕı ÏòÓÒ°Ú¶¯(YÖµ¸ºÊı)RzÎª¸º
+	 //// è¿ç»­æ‘†åŠ¨ç‚¹ç„Š(å¯ä¸æ‘†åŠ¨) è¿åŠ¨é¡ºåº ä½ç½®1 -ã€‹ä½ç½®2 -ã€‹ä½ç½®3 -ã€‹æŠ¬é«˜ä½ç½®1 -ã€‹æŠ¬é«˜ä½ç½®2 -ã€‹æŠ¬é«˜ä½ç½®3 â€¦â€¦
+	 //// I003ï¼šJobå†…å¼€å¤´ä¿®æ”¹ï¼šèµ·å¼§å¼€å…³(é»˜è®¤0ä¸èµ·å¼§) 1:èµ·å¼§   0:ä¸èµ·å¼§
+	 //// I004ï¼šç§»åŠ¨é€Ÿåº¦(å•ä½:6mm/min)
+	 //// I005ï¼šç”µæµ (A)
+	 //// I006ï¼šç”µå‹ (V)
+	 //// I007ï¼šç‚¹ç„Šæ—¶é—´(å•ä½ï¼š0.01s) 
+	 //// I008ï¼šç›¸é‚»æ‘†åŠ¨å¾ªç¯æŠ¬é«˜è·ç¦»(å•ä½ï¼š0.1mm)
+	 //// P110ï¼šç„Šæ¥èµ·ç‚¹ 
+	 //// P111ï¼šç„Šæ¥ç»ˆç‚¹ 
+	 //// P112ï¼šä½ç½®1åç§»é‡ 
+	 //// P113ï¼šä½ç½®2åç§»é‡ 
+	 //// P114ï¼šä½ç½®3åç§»é‡   
+	 ////	ä¸‰ä¸ªåç§»ä½ç½®è¯´æ˜ï¼šX:å¹²ä¼¸é•¿  Y:å·¦å³æ‘†å¹… Z:ç›¸å¯¹äºä¸­é—´ç‚¹çš„æŠ¬é«˜è·ç¦» Rz:å·¦å³æ‘†åŠ¨Rzå˜åŒ–å€¼
+	 //// 	X:å¹²ä¼¸é•¿åº¦(mm)ï¼šå¢åŠ å‘ç„Šç¼å¤–ç§»åŠ¨ å‡å°å‘ç„Šç¼é‡Œç§»åŠ¨
+	 ////		Y:æ‘†åŠ¨å¹…åº¦(mm)ï¼šåœ¨ç„Šä¸è§’åº¦çœ‹ è´Ÿæ•°:å‘å·¦æ‘†åŠ¨ æ­£æ•°:å‘å³æ‘†åŠ¨
+	 ////		Z:æŠ¬é«˜è·ç¦»(mm)ï¼šä¸€ä¸ªæ‘†åŠ¨å¾ªç¯å†… å„ä½ç½®ç›¸å¯¹ä¸åŸºå‡†ä½ç½®çš„é«˜åº¦åç§»
+	 ////		Rzï¼šæ‘†åŠ¨åŒæ—¶Rzå˜åŒ–(Â°)ï¼šå»ºè®® å‘å·¦æ‘†åŠ¨(Yå€¼æ­£æ•°)Rzä¸ºæ­£ å‘å³æ‘†åŠ¨(Yå€¼è´Ÿæ•°)Rzä¸ºè´Ÿ
 	 //
 	 //int nRobotNo = 0;
 	 //CUnit* pUnit = m_vpUnit[nRobotNo];
@@ -4249,10 +4301,10 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	 int nPtnNum = vtCoord.size();
 	 if (nPtnNum < nSingleTimePtnNum)
 	 {
-		 XiMessageBoxOk("ÂË²¨ÊäÈëµãÊıĞ¡ÓÚµ¥´ÎÂË²¨µãÊı£¬ÂË²¨Ê§°Ü");
+		 XiMessageBoxOk("æ»¤æ³¢è¾“å…¥ç‚¹æ•°å°äºå•æ¬¡æ»¤æ³¢ç‚¹æ•°ï¼Œæ»¤æ³¢å¤±è´¥");
 		 return false;
 	 }
-	 // Ã¿´ÎÈ¡dSingleTimePtnNum¸öµã ²ÉÑù¼ä¸ônSampleInterval  Ö´ĞĞÂË²¨ 
+	 // æ¯æ¬¡å–dSingleTimePtnNumä¸ªç‚¹ é‡‡æ ·é—´éš”nSampleInterval  æ‰§è¡Œæ»¤æ³¢ 
 	 for (int i = nSingleTimePtnNum; i < nPtnNum; i += nSingleTimePtnNum)
 	 {
 		 int nIdxS = i - nSingleTimePtnNum;
@@ -4333,14 +4385,14 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	CvPoint3D32f tCameraNorm = cvPoint3D32f(-1.0, -1.0, -1.0);
 	CvPoint3D32f tPlaneHNorm = cvPoint3D32f(0.0, 0.0, 1.0);
 
-	// µ¯´°±êÌâ
-	CString cStrTitle = "ÊäÈë²ÎÊı";
-	// ²ÎÊıµÄÖĞÎÄÃû³Æ
+	// å¼¹çª—æ ‡é¢˜
+	CString cStrTitle = "è¾“å…¥å‚æ•°";
+	// å‚æ•°çš„ä¸­æ–‡åç§°
 	std::vector<CString> vsInputName;
-	vsInputName.push_back("·¨ÏòX");
-	vsInputName.push_back("·¨ÏòY");
-	vsInputName.push_back("·¨ÏòZ");	
-	vsInputName.push_back("1Õı×ù-1µ¹¹Ò");	
+	vsInputName.push_back("æ³•å‘X");
+	vsInputName.push_back("æ³•å‘Y");
+	vsInputName.push_back("æ³•å‘Z");	
+	vsInputName.push_back("1æ­£åº§-1å€’æŒ‚");	
 	std::vector<double> vnInputData;
 	vnInputData.push_back(tCameraNorm.x);
 	vnInputData.push_back(tCameraNorm.y);
@@ -4354,12 +4406,12 @@ void CAssemblyWeld::TestLaserCenterPtnImageProcess(int nRobotNo/* = 0*/, int nCa
 	tPlaneHNorm.z = vnInputData.at(3);
 
 	vsInputName.clear();
-	vsInputName.push_back("²Î¿¼µã1_X");
-	vsInputName.push_back("²Î¿¼µã1_Y");
-	vsInputName.push_back("²Î¿¼µã1_Z");
-	vsInputName.push_back("²Î¿¼µã2_X");
-	vsInputName.push_back("²Î¿¼µã2_Y");
-	vsInputName.push_back("²Î¿¼µã2_Z");
+	vsInputName.push_back("å‚è€ƒç‚¹1_X");
+	vsInputName.push_back("å‚è€ƒç‚¹1_Y");
+	vsInputName.push_back("å‚è€ƒç‚¹1_Z");
+	vsInputName.push_back("å‚è€ƒç‚¹2_X");
+	vsInputName.push_back("å‚è€ƒç‚¹2_Y");
+	vsInputName.push_back("å‚è€ƒç‚¹2_Z");
 
 	vnInputData.clear();
 	vnInputData.push_back(tRefPtn[0].x);
@@ -4464,31 +4516,31 @@ void CAssemblyWeld::TestScanEndptnImageProcess()
 //	CString sDefaultPath = "./";
 //	CString sFileName;
 //	double dImageIntervalDis = 0.7;
-//	double dRobotInstallMode = -1.0; // Õı×°£º1.0   µ¹×°£º-1.0
+//	double dRobotInstallMode = -1.0; // æ­£è£…ï¼š1.0   å€’è£…ï¼š-1.0
 //	CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[0];
 //	E_CAM_ID eCamId = E_LEFT_ROBOT_LEFT_CAM_H;
 //	T_ABS_POS_IN_BASE tPointAbsCoordInBase;
 //	sFileName = OpenFileDlg(this, _T("*"), sDefaultPath);
 //	CString sRootPath = sFileName.Left(sFileName.ReverseFind('\\'));
 //
-//	// ¿ªÊ¼Í¼Æ¬Ë÷Òı Ñ¡ÔñÎÄ¼ş
+//	// å¼€å§‹å›¾ç‰‡ç´¢å¼• é€‰æ‹©æ–‡ä»¶
 //	CString sIdxS = sFileName.Right(sFileName.GetLength() - 1 - sFileName.ReverseFind('('));
 //	sIdxS = sIdxS.Left(sIdxS.Find(')'));
 //	int nIdxS = atoi(sIdxS.GetBuffer());
 //	int nIdxE = 1000;
 //	
-//	// ½áÊøÍ¼Æ¬Ë÷Òı ÊäÈë
-//	CString cStrTitle = "½áÊøÍ¼Æ¬Ë÷Òı";
-//	// ²ÎÊıµÄÖĞÎÄÃû³Æ
-//	std::vector<CString> vsInputName(1, "½áÊøË÷Òı");
-//	// Êµ¼Ê²ÎÊıÊıÖµ
+//	// ç»“æŸå›¾ç‰‡ç´¢å¼• è¾“å…¥
+//	CString cStrTitle = "ç»“æŸå›¾ç‰‡ç´¢å¼•";
+//	// å‚æ•°çš„ä¸­æ–‡åç§°
+//	std::vector<CString> vsInputName(1, "ç»“æŸç´¢å¼•");
+//	// å®é™…å‚æ•°æ•°å€¼
 //	std::vector<double> vnInputData(1, (double)nIdxE);
-//	// ĞŞ¸ÄÊ¶±ğ²ÎÊı´°¿Ú
+//	// ä¿®æ”¹è¯†åˆ«å‚æ•°çª—å£
 //	ParamInput cParamDlg(cStrTitle, vsInputName, &vnInputData);
 //	int nRst = cParamDlg.DoModal();
 //	nIdxE = vnInputData[0];
 //
-//	// ´´½¨Ò»¸ö´¦ÀíÍ¼ÎÄ¼ş¼Ğ
+//	// åˆ›å»ºä¸€ä¸ªå¤„ç†å›¾æ–‡ä»¶å¤¹
 //	CString sProImagePath = sRootPath.Left(sRootPath.ReverseFind('\\'));
 //	CString sOrgFolder = sRootPath.Right(sRootPath.GetLength() - 1 - sRootPath.ReverseFind('\\'));
 //	sProImagePath.Format("%s\\%sPro", sProImagePath, sOrgFolder);
@@ -4559,7 +4611,7 @@ void CAssemblyWeld::TestScanEndptnImageProcess()
 bool CAssemblyWeld::BackHome_G()
 {
 	std::vector<CWinThread*> vpThread(0);
-	if (1 == XiMessageBox("»úÆ÷ÈË1»Ø°²È«Î»ÖÃ£¿"))
+	if (1 == XiMessageBox("æœºå™¨äºº1å›å®‰å…¨ä½ç½®ï¼Ÿ"))
 	{
 		T_ROBOT_THREAD* tRobot = new T_ROBOT_THREAD();
 		tRobot->cIncisePlanePart = this;
@@ -4568,7 +4620,7 @@ bool CAssemblyWeld::BackHome_G()
 		pThread->m_bAutoDelete = false;
 		vpThread.push_back(pThread);
 	}
-	if (1 == XiMessageBox("»úÆ÷ÈË2»Ø°²È«Î»ÖÃ£¿"))
+	if (1 == XiMessageBox("æœºå™¨äºº2å›å®‰å…¨ä½ç½®ï¼Ÿ"))
 	{
 		T_ROBOT_THREAD* tRobot = new T_ROBOT_THREAD();
 		tRobot->cIncisePlanePart = this;
@@ -4581,15 +4633,15 @@ bool CAssemblyWeld::BackHome_G()
 	bool bSuccess = WaitAndCheckAllThreadExit(vpThread);
 	if (!bSuccess)
 	{
-		//ÒÑĞŞ¸Ä
-		//SetHintInfo("»Ø°²È«Î»ÖÃÊ§°Ü£¡");
-		SetHintInfo(XUI::Languge::GetInstance().translate("»Ø°²È«Î»ÖÃÊ§°Ü!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
+		//å·²ä¿®æ”¹
+		//SetHintInfo("å›å®‰å…¨ä½ç½®å¤±è´¥ï¼");
+		SetHintInfo(XUI::Languge::GetInstance().translate("å›å®‰å…¨ä½ç½®å¤±è´¥!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
 	}
 	else
 	{
-		//ÒÑĞŞ¸Ä
-		//SetHintInfo("»Ø°²È«Î»ÖÃÍê³É£¡");
-		SetHintInfo(XUI::Languge::GetInstance().translate("»Ø°²È«Î»ÖÃÍê³É!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
+		//å·²ä¿®æ”¹
+		//SetHintInfo("å›å®‰å…¨ä½ç½®å®Œæˆï¼");
+		SetHintInfo(XUI::Languge::GetInstance().translate("å›å®‰å…¨ä½ç½®å®Œæˆ!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
 	};
 	return bSuccess;
 }
@@ -4614,7 +4666,7 @@ UINT CAssemblyWeld::ThreadGrooveTeachWeld(void *pParam)
 	CAssemblyWeld* pObj = (CAssemblyWeld*)pParam;
 	if (true == pObj->m_bGrooveTeachWeldRunning)
 	{
-		XiMessageBoxOk("ÆÂ¿Úº¸½ÓÏß³ÌÔËĞĞÖĞ£¬½ûÖ¹ÖØ¸´¿ªÆô!");
+		XiMessageBoxOk("å¡å£ç„Šæ¥çº¿ç¨‹è¿è¡Œä¸­ï¼Œç¦æ­¢é‡å¤å¼€å¯!");
 		return -1;
 	}
 	pObj->m_bGrooveTeachWeldRunning = true;
@@ -4627,10 +4679,10 @@ int CAssemblyWeld::FuncGrooceTeachWeld()
 {
 	int nRobotNo = 0;
 	int dirRobot = -1;
-	WriteLog("µ¥»÷£ºÆÂ¿Úº¸½Ó");
+	WriteLog("å•å‡»ï¼šå¡å£ç„Šæ¥");
 	vector<T_WAVE_PARA> vtTWavePara;
 	vector<T_INFOR_WAVE_RAND> vtGrooveRand;
-	//»ñÈ¡ÆğÖÕµãÊı¾İ
+	//è·å–èµ·ç»ˆç‚¹æ•°æ®
 	/*T_ROBOT_COORS tRobotStartCoord = { 0,0,0,180,45,0,0,0,0 };
 	T_ROBOT_COORS tRobotEndCoord = { 100,-100,0,0,0,0,0,0,0 };*/
 	T_ROBOT_COORS tRobotStartCoord = { 100,100,0,180,45,0,0,0,0 };
@@ -4638,19 +4690,19 @@ int CAssemblyWeld::FuncGrooceTeachWeld()
 	GetTeachPos(tRobotStartCoord, tRobotEndCoord, nRobotNo);
 	if (0 != GetGroovePara(tRobotStartCoord, tRobotEndCoord, vtTWavePara))
 	{
-		XiMessageBox("»ñÈ¡°Ú»¡²ÎÊıÊ§°Ü");
+		XiMessageBox("è·å–æ‘†å¼§å‚æ•°å¤±è´¥");
 	}
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	// 
 	T_GROOVE_INFOR tGrooveInfor;
-	//ÊÓ¾õ´¦Àíº¯Êı£¬×îºó²ÎÊı»¹Î´ÕûÀí£¬Ä¿Ç°Ö»¿ÉÒÔÓÃÀ´²âÊÔÊÓ¾õ¹¦ÄÜ
-	//if (MB_OK == XiMessageBox("ÊÇ·ñ½øĞĞÉ¨Ãè"))
+	//è§†è§‰å¤„ç†å‡½æ•°ï¼Œæœ€åå‚æ•°è¿˜æœªæ•´ç†ï¼Œç›®å‰åªå¯ä»¥ç”¨æ¥æµ‹è¯•è§†è§‰åŠŸèƒ½
+	//if (MB_OK == XiMessageBox("æ˜¯å¦è¿›è¡Œæ‰«æ"))
 	//{
 	   // ScanGrooveInfo(tRobotStartCoord, tRobotEndCoord, nRobotNo, tGrooveInfor);
 	//}
 
 
-	//×Ô¶¯ÅÅµÀ
+	//è‡ªåŠ¨æ’é“
 	tGrooveInfor.weldAngle = tRobotStartCoord.dRZ;
 	tGrooveInfor.dPlateThickness = 20.0;
 	tGrooveInfor.dStartLowerFace = 5.0;
@@ -4667,7 +4719,7 @@ int CAssemblyWeld::FuncGrooceTeachWeld()
 	vector<double> weldSpeedRate;
 	vector<vector<T_ROBOT_COORS>> vvtGrooveWavePath;
 	vector<vector<double>> vWeldSpeedRate;
-	//¼ÆËã°Ú»¡¹ì¼£
+	//è®¡ç®—æ‘†å¼§è½¨è¿¹
 	for (size_t i = 0; i < vtGrooveRand.size(); i++)
 	{
 		vtGrooveWavePath.clear();
@@ -4696,22 +4748,22 @@ int CAssemblyWeld::FuncGrooceTeachWeld()
 		fclose(pf);
 
 	}
-	//º¸½Ó
+	//ç„Šæ¥
 	if (1 == GrooveWeld(vvtGrooveWavePath, vtTWavePara, vWeldSpeedRate, nRobotNo))
 	{
-		MessageBox("º¸½Ó³É¹¦");
+		MessageBox("ç„Šæ¥æˆåŠŸ");
 		return 0;
 	}
 	else
 	{
-		MessageBox("º¸½ÓÊ§°Ü");
+		MessageBox("ç„Šæ¥å¤±è´¥");
 		return -1;
 	}
 }
 
 int CAssemblyWeld::GetGroovePara(const T_ROBOT_COORS& tRobotStartCoord, const T_ROBOT_COORS& tRobotEndCoord, vector<T_WAVE_PARA>& vtTWavePara)
 {
-	bool isVerticalWeld = false;//ÊÇ·ñÁ¢º¸
+	bool isVerticalWeld = false;//æ˜¯å¦ç«‹ç„Š
 	double disEndToStart = sqrt(pow((tRobotEndCoord.dX - tRobotStartCoord.dX), 2) + pow((tRobotEndCoord.dY - tRobotStartCoord.dY), 2) + pow((tRobotEndCoord.dZ - tRobotStartCoord.dZ), 2));
 	double vecX = (tRobotEndCoord.dX - tRobotStartCoord.dX) / disEndToStart;
 	double vecY = (tRobotEndCoord.dY - tRobotStartCoord.dY) / disEndToStart;
@@ -4758,14 +4810,14 @@ int CAssemblyWeld::GetVerGroovePara(vector<T_WAVE_PARA>& vtTWavePara)
 
 int CAssemblyWeld::GetTeachPos(T_ROBOT_COORS& tRobotStartCoord, T_ROBOT_COORS& tRobotEndCoord, int nRobotNo)
 {
-	//»ñÈ¡Ê¾½ÌµÄµãÎ»
+	//è·å–ç¤ºæ•™çš„ç‚¹ä½
 	double pTeach[2][6] = { 0 };
 	UINT* pToolNo = new UINT;
 	UINT* pUserNo = new UINT;
 	UINT* pPosture = new UINT;
 	m_vpRobotDriver[nRobotNo]->GetMultiPosVar(2, 111, pTeach, pToolNo, pUserNo, pPosture);
 
-	//È·¶¨ÆğµãÎ»ÖÃ
+	//ç¡®å®šèµ·ç‚¹ä½ç½®
 	tRobotStartCoord.dX = pTeach[0][0];
 	tRobotStartCoord.dY = pTeach[0][1];
 	tRobotStartCoord.dZ = pTeach[0][2];
@@ -4773,7 +4825,7 @@ int CAssemblyWeld::GetTeachPos(T_ROBOT_COORS& tRobotStartCoord, T_ROBOT_COORS& t
 	tRobotStartCoord.dRY = pTeach[0][4];
 	tRobotStartCoord.dRZ = pTeach[0][5];
 
-	//È·¶¨ÖÕµãÎ»ÖÃ
+	//ç¡®å®šç»ˆç‚¹ä½ç½®
 	tRobotEndCoord.dX = pTeach[1][0];
 	tRobotEndCoord.dY = pTeach[1][1];
 	tRobotEndCoord.dZ = pTeach[1][2];
@@ -4787,7 +4839,7 @@ int CAssemblyWeld::CalWavePath(T_GROOVE_INFOR tGrooveInfor, T_INFOR_WAVE_RAND tG
 {
 	T_ROBOT_COORS tRobotStartCoord = tGrooveRand.tStartPoint;
 	T_ROBOT_COORS tRobotEndCoord = tGrooveRand.tEndPoint;
-	bool isVerticalWeld = false;//ÊÇ·ñÁ¢º¸
+	bool isVerticalWeld = false;//æ˜¯å¦ç«‹ç„Š
 	vtGrooveWavePath.clear();
 	double disEndToStart = sqrt(pow((tRobotEndCoord.dX - tRobotStartCoord.dX), 2) + pow((tRobotEndCoord.dY - tRobotStartCoord.dY), 2) + pow((tRobotEndCoord.dZ - tRobotStartCoord.dZ), 2));
 	double vecX = (tRobotEndCoord.dX - tRobotStartCoord.dX) / disEndToStart;
@@ -4798,9 +4850,9 @@ int CAssemblyWeld::CalWavePath(T_GROOVE_INFOR tGrooveInfor, T_INFOR_WAVE_RAND tG
 		isVerticalWeld = true;
 	}
 	T_ROBOT_COORS tmpCoor = tRobotStartCoord;
-	//¼ÆËãÆğµãÖÁÖÕµã¾àÀëÒÔ¼°·½ÏòÏòÁ¿
+	//è®¡ç®—èµ·ç‚¹è‡³ç»ˆç‚¹è·ç¦»ä»¥åŠæ–¹å‘å‘é‡
 	// 
-	//È·¶¨×ËÌ¬ÒÔ¼°²åÈëÆğµãÒÔ¼°ÆğµãËÙÂÊ
+	//ç¡®å®šå§¿æ€ä»¥åŠæ’å…¥èµ·ç‚¹ä»¥åŠèµ·ç‚¹é€Ÿç‡
 	if (!isVerticalWeld)
 	{
 		tmpCoor.dRZ = atan2(vecY, vecX) * 180 / PI;
@@ -4835,43 +4887,43 @@ int CAssemblyWeld::CalWavePath(T_GROOVE_INFOR tGrooveInfor, T_INFOR_WAVE_RAND tG
 	double vecOnlyY;
 	if (isVerticalWeld)
 	{
-		//¼ÆËã°Ú»¡µãÆ«ÒÆÏòÁ¿,º¸Ç¹½Ç¶ÈÎªº¸µÀ·½Ïò
+		//è®¡ç®—æ‘†å¼§ç‚¹åç§»å‘é‡,ç„Šæªè§’åº¦ä¸ºç„Šé“æ–¹å‘
 		double weldAngle = PI * tGrooveInfor.weldAngle / 180;
 		vecOnlyX = cos(weldAngle);
 		vecOnlyY = sin(weldAngle);
 	}
 	else
 	{
-		////¼ÆËã°Ú»¡Æ«ÒÆ·½ÏòÏòÁ¿Ğı×ªÇ°£¨²»¿¼ÂÇZ·½Ïò£©
+		////è®¡ç®—æ‘†å¼§åç§»æ–¹å‘å‘é‡æ—‹è½¬å‰ï¼ˆä¸è€ƒè™‘Zæ–¹å‘ï¼‰
 		double disXY = sqrt(pow((tRobotEndCoord.dX - tRobotStartCoord.dX), 2) + pow((tRobotEndCoord.dY - tRobotStartCoord.dY), 2));
 		vecOnlyX = (tRobotEndCoord.dX - tRobotStartCoord.dX) / disXY;
 		vecOnlyY = (tRobotEndCoord.dY - tRobotStartCoord.dY) / disXY;
 	}
 
-	//¼ÆËã°Ú»¡Æ«ÒÆ·½ÏòÏòÁ¿ÄæÊ±ÕëĞı×ª
+	//è®¡ç®—æ‘†å¼§åç§»æ–¹å‘å‘é‡é€†æ—¶é’ˆæ—‹è½¬
 	double vecXAntiClockWise = vecOnlyX * cos(PI / 2) - vecOnlyY * sin(PI / 2);
 	double vecYAntiClockWise = vecOnlyX * sin(PI / 2) - vecOnlyY * cos(PI / 2);
-	//¼ÆËã°Ú»¡Æ«ÒÆ·½ÏòÏòÁ¿Ë³Ê±ÕëĞı×ª
+	//è®¡ç®—æ‘†å¼§åç§»æ–¹å‘å‘é‡é¡ºæ—¶é’ˆæ—‹è½¬
 	double vecXClockWise = vecOnlyX * cos(-PI / 2) - vecOnlyY * sin(-PI / 2);
 	double vecYClockWise = vecOnlyX * sin(-PI / 2) - vecOnlyY * cos(-PI / 2);
 	//
-	double disWaveEndtoStart = tWavePara.dEndWave - tWavePara.dStartWave;//ÆğµãÖÕµã°Ú·ù²î
+	double disWaveEndtoStart = tWavePara.dEndWave - tWavePara.dStartWave;//èµ·ç‚¹ç»ˆç‚¹æ‘†å¹…å·®
 	/*double waveAngle = tWavePara.dWaveAngle * PI / 180;*/
-	double disWave = tWavePara.dStartWave; //Ã¿¶Î°Ú·ù¶È
+	double disWave = tWavePara.dStartWave; //æ¯æ®µæ‘†å¹…åº¦
 	/*double disWaveRunVec = disWave * cos(waveAngle) / sin(waveAngle);*/
-	double sunDisRunVec = tWavePara.dWaveDistance;//¼ÇÂ¼ÑØº¸·ì·½Ïò¾àÀë
-	int totalWave = disEndToStart / tWavePara.dWaveDistance;//³õ²½¼ÆËã°Ú·ù×Ü¶ÎÊı
-	double surplusWave = disEndToStart - totalWave * tWavePara.dWaveDistance;//È·¶¨Ê£Óà°Ú»¡ÓàÁ¿
-	//È·¶¨°Ú»¡×Ü¶ÎÊı
+	double sunDisRunVec = tWavePara.dWaveDistance;//è®°å½•æ²¿ç„Šç¼æ–¹å‘è·ç¦»
+	int totalWave = disEndToStart / tWavePara.dWaveDistance;//åˆæ­¥è®¡ç®—æ‘†å¹…æ€»æ®µæ•°
+	double surplusWave = disEndToStart - totalWave * tWavePara.dWaveDistance;//ç¡®å®šå‰©ä½™æ‘†å¼§ä½™é‡
+	//ç¡®å®šæ‘†å¼§æ€»æ®µæ•°
 	if (surplusWave > (tWavePara.dWaveDistance / 2))
 	{
 		totalWave++;
 	}
 	if (!isVerticalWeld || (isVerticalWeld && 0 == tWavePara.waveType))
 	{
-		//È·¶¨°Ú·ù¹Ì¶¨Ôö¼Ó±äÁ¿
+		//ç¡®å®šæ‘†å¹…å›ºå®šå¢åŠ å˜é‡
 		double waveChangeValue = disWaveEndtoStart / totalWave;
-		//²åÈë°Ú»¡µÄµÚÒ»¸ö°Ú·ùµã
+		//æ’å…¥æ‘†å¼§çš„ç¬¬ä¸€ä¸ªæ‘†å¹…ç‚¹
 		tmpCoor.dX = tRobotStartCoord.dX + (sunDisRunVec - tWavePara.dWaveDistance / 2) * vecX;
 		tmpCoor.dY = tRobotStartCoord.dY + (sunDisRunVec - tWavePara.dWaveDistance / 2) * vecY;
 		tmpCoor.dZ = tRobotStartCoord.dZ + (sunDisRunVec - tWavePara.dWaveDistance / 2) * vecZ;
@@ -4920,7 +4972,7 @@ int CAssemblyWeld::CalWavePath(T_GROOVE_INFOR tGrooveInfor, T_INFOR_WAVE_RAND tG
 	}
 	else if (1 == tWavePara.waveType)
 	{
-		//È·¶¨°Ú·ù¹Ì¶¨Ôö¼Ó±äÁ¿
+		//ç¡®å®šæ‘†å¹…å›ºå®šå¢åŠ å˜é‡
 		double waveChangeValue = disWaveEndtoStart / (totalWave - 1);
 		for (int waveNum = 0; waveNum < totalWave; waveNum++)
 		{
@@ -4968,7 +5020,7 @@ int CAssemblyWeld::CalWavePath(T_GROOVE_INFOR tGrooveInfor, T_INFOR_WAVE_RAND tG
 	}
 	else
 	{
-		XiMessageBox("ÔİÎŞ´Ë°Ú¶¯");
+		XiMessageBox("æš‚æ— æ­¤æ‘†åŠ¨");
 		return -1;
 	}
 }
@@ -4977,8 +5029,8 @@ int CAssemblyWeld::GrooveWeld(vector<vector<T_ROBOT_COORS>> vvtGrooveWavePath, v
 {
 	CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 	CUnit* pUnit = m_vpUnit[nRobotNo];
-	// ´´½¨²¢³õÊ¼»¯¼Ó¾¢°åº¸½ÓÊµÀı
-	WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ÎªÁË²»ĞŞÒÔÏÂ±äÁ¿Ãû
+	// åˆ›å»ºå¹¶åˆå§‹åŒ–åŠ åŠ²æ¿ç„Šæ¥å®ä¾‹
+	WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ä¸ºäº†ä¸ä¿®ä»¥ä¸‹å˜é‡å
 	CHECK_BOOL_RETURN(CreateObject(SMALL_PIECE/*pRobotDriver->m_tChoseWorkPieceType*/, m_vpUnit[nRobotNo], &pWeldAfterMeasure));
 	pWeldAfterMeasure->SetRecoParam();
 	pWeldAfterMeasure->SetHardware(m_vpScanInit[nRobotNo]);
@@ -4993,9 +5045,9 @@ int CAssemblyWeld::GrooveWeld(vector<vector<T_ROBOT_COORS>> vvtGrooveWavePath, v
 int CAssemblyWeld::GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_PARA> vtTWavePara, vector<T_INFOR_WAVE_RAND>& vtGrooveRand, int nRobotDir)
 {
 	T_INFOR_WAVE_RAND tmpPointOffset;
-	int noCount = 0;//°´ÕÕµÀÊı½øĞĞÆ«ÒÆ
-	double dArcRandOffset = 20.0;//¶à²ã¶àµÀÃ¿´ÎÆğÊÕ»¡Î»ÖÃÆ«ÒÆ
-	double dArcThickness = 4.0;//Ã¿²ãº¸½Óºñ¶È
+	int noCount = 0;//æŒ‰ç…§é“æ•°è¿›è¡Œåç§»
+	double dArcRandOffset = 20.0;//å¤šå±‚å¤šé“æ¯æ¬¡èµ·æ”¶å¼§ä½ç½®åç§»
+	double dArcThickness = 4.0;//æ¯å±‚ç„Šæ¥åšåº¦
 	double dUpperFace = tGrooveInfor.dStartUpperFace > tGrooveInfor.dEndUpperFace ? tGrooveInfor.dStartUpperFace : tGrooveInfor.dEndUpperFace;
 	double dLowerFace = tGrooveInfor.dStartLowerFace > tGrooveInfor.dEndLowerFace ? tGrooveInfor.dStartLowerFace : tGrooveInfor.dEndLowerFace;
 	double disFace = dUpperFace - dLowerFace;
@@ -5006,13 +5058,13 @@ int CAssemblyWeld::GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_
 		numLayel++;
 	}
 	double disRateFace = disFace / numLayel;
-	bool isVerticalWeld = false;//ÊÇ·ñÁ¢º¸
+	bool isVerticalWeld = false;//æ˜¯å¦ç«‹ç„Š
 	T_ROBOT_COORS tRobotStartCoord = tGrooveInfor.tStartPoint;
 	T_ROBOT_COORS tRobotEndCoord = tGrooveInfor.tEndPoint;
 	double disEndToStart = sqrt(pow((tRobotEndCoord.dX - tRobotStartCoord.dX), 2) + pow((tRobotEndCoord.dY - tRobotStartCoord.dY), 2) + pow((tRobotEndCoord.dZ - tRobotStartCoord.dZ), 2));
 	if (120 > disEndToStart)
 	{
-		XiMessageBox("º¸·ì¾àÀë¹ı¶Ì!");
+		XiMessageBox("ç„Šç¼è·ç¦»è¿‡çŸ­!");
 		return -1;
 	}
 	double vecX = (tRobotEndCoord.dX - tRobotStartCoord.dX) / disEndToStart;
@@ -5159,7 +5211,7 @@ int CAssemblyWeld::GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_
 			}
 			else
 			{
-				XiMessageBox("µ×Ãæº¸·ì¹ı¿í£¡");
+				XiMessageBox("åº•é¢ç„Šç¼è¿‡å®½ï¼");
 				return -1;
 			}
 			dLowerFace += disRateFace;
@@ -5279,7 +5331,7 @@ int CAssemblyWeld::GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_
 			}*/
 			else
 			{
-				XiMessageBox("µ×Ãæº¸·ì¹ı¿í£¡");
+				XiMessageBox("åº•é¢ç„Šç¼è¿‡å®½ï¼");
 				return -1;
 			}
 			dLowerFace += disRateFace;
@@ -5290,7 +5342,7 @@ int CAssemblyWeld::GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_
 
 bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 {
-	bool bIsGrooveStandWeld = false;//ÊÇ·ñÁ¢º¸
+	bool bIsGrooveStandWeld = false;//æ˜¯å¦ç«‹ç„Š
 	CvPoint3D64f tStartPtn = tWeldLineInfo.tWeldLine.StartPoint;
 	CvPoint3D64f tEndPtn = tWeldLineInfo.tWeldLine.EndPoint;
 	double disEndToStart = sqrt(pow((tEndPtn.x - tStartPtn.x), 2) + pow((tEndPtn.y - tStartPtn.y), 2) + pow((tEndPtn.z - tStartPtn.z), 2));
@@ -5321,16 +5373,16 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonAdjustRecog()
  {
-	 WriteLog("µ¥»÷£ºÊÖ¶¯ÇåÇ¹");
+	 WriteLog("å•å‡»ï¼šæ‰‹åŠ¨æ¸…æª");
 	 if (true == m_bAutoWeldWorking)
 	 {
-		 XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜÖ´ĞĞÇåÇ¹!");
+		 XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½æ‰§è¡Œæ¸…æª!");
 		 return;
 	 }
 	 int nRobotNo = 0;
 	 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 
-	 if ((TRUE == m_bNaturalPop) && (1 == XiMessageBox("µÚÒ»Ì¨ÊÇ·ñÇåÇ¹")))
+	 if ((TRUE == m_bNaturalPop) && (1 == XiMessageBox("ç¬¬ä¸€å°æ˜¯å¦æ¸…æª")))
 	 {
 		 CleanGun(m_vpRobotDriver[0]);
 	 }
@@ -5342,20 +5394,20 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::BackHome()
  {
-	 if (54 == m_vpRobotDriver[0]->m_nExternalAxleType) // ¹úº¸ÁÙÊ±
+	 if (54 == m_vpRobotDriver[0]->m_nExternalAxleType) // å›½ç„Šä¸´æ—¶
 	 {
 		 BackHome_G();
 		 return;
 	 }
 
-	 //int nRobotNo = 1 == XiMessageBox("È·¶¨»úÆ÷ÈË1,È¡Ïû»úÆ÷ÈË2") ? 0 : 1;
+	 //int nRobotNo = 1 == XiMessageBox("ç¡®å®šæœºå™¨äºº1,å–æ¶ˆæœºå™¨äºº2") ? 0 : 1;
 	 int nRobotNo = 0;
 	 CUnit* pUnit = m_vpUnit[nRobotNo];
 	 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 	 CHECK_BOOL(pUnit->CheckIsReadyRun());
 
-	 // Õı×ù»úÆ÷ÈË or µ¹¹Ò»úÆ÷ÈË £¿
-	 double dRobotInstallMode = pRobotDriver->m_nRobotInstallDir; // Õı×°£º1.0   µ¹×°£º-1.0
+	 // æ­£åº§æœºå™¨äºº or å€’æŒ‚æœºå™¨äºº ï¼Ÿ
+	 double dRobotInstallMode = pRobotDriver->m_nRobotInstallDir; // æ­£è£…ï¼š1.0   å€’è£…ï¼š-1.0
 	 double dMinUpMoveDis = PARA_SYSTEM(dMinRisingHeightForBackHome);
 	 double dBackHeightThreshold = PARA_SYSTEM(dSafeHeightBetweenCurPosToHomePos);
 	 T_ANGLE_PULSE tCurPulse;
@@ -5372,28 +5424,28 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 if (tCurCoord.dX == 0 && tCurCoord.dY == 0 && tCurCoord.dZ == 0 && tCurCoord.dRY == 0)
 		 tCurCoord = pRobotDriver->GetCurrentPos();
 	 if (tCurCoord.dX == 0 && tCurCoord.dY == 0 && tCurCoord.dZ == 0 && tCurCoord.dRY == 0)
-		 XUI::MesBox::PopError("ÎŞ·¨»ñÈ¡»úÆ÷ÈËµ±Ç°Î»ÖÃ");
+		 XUI::MesBox::PopError("æ— æ³•è·å–æœºå™¨äººå½“å‰ä½ç½®");
 
 	 //tCurCoord = pRobotDriver->GetCurrentPos();
 	 //tCurPulse = pRobotDriver->GetCurrentPulse();
 	 pRobotDriver->RobotKinematics(pRobotDriver->m_tHomePulse, pRobotDriver->m_tTools.tGunTool, tHomeCoord);
 	 //pRobotDriver->RobotKinematics(tCurPulse, pRobotDriver->m_tTools.tGunTool, tTransCoord);
 
-	 //// ¶ÁÈ¡Ö±½Ç×ø±êºÍ¶ÁÈ¡¹Ø½Ú×ø±ê×ª»»³öÀ´½á¹û²»Í¬Ê±£¬²»ÄÜÔË¶¯
+	 //// è¯»å–ç›´è§’åæ ‡å’Œè¯»å–å…³èŠ‚åæ ‡è½¬æ¢å‡ºæ¥ç»“æœä¸åŒæ—¶ï¼Œä¸èƒ½è¿åŠ¨
 	 //if (false == pRobotDriver->CompareCoords(tTransCoord, tCurCoord))
 	 //{
-		// WriteLog("MoveToSafeHeight:¶ÁÈ¡×ø±êºÍ¼ÆËã×ø±êÎó²î¹ı´ó");
-		// XiMessageBoxOk("¶ÁÈ¡×ø±êºÍ¼ÆËã×ø±ê²»Í¬£¬ÎŞ·¨×Ô¶¯»Ø°²È«Î»ÖÃ£¡");
+		// WriteLog("MoveToSafeHeight:è¯»å–åæ ‡å’Œè®¡ç®—åæ ‡è¯¯å·®è¿‡å¤§");
+		// XiMessageBoxOk("è¯»å–åæ ‡å’Œè®¡ç®—åæ ‡ä¸åŒï¼Œæ— æ³•è‡ªåŠ¨å›å®‰å…¨ä½ç½®ï¼");
 		// return;
 	 //}
 
-	 double dMinBackGunHeight = tHomeCoord.dZ - (dBackHeightThreshold * dRobotInstallMode);//×îĞ¡£¬×î´ó¸ß¶È°²È«Î»ÖÃ¼ÓÉÏãĞÖµ
-	 // ¸ß¶ÈĞ¡ÓÚdMinBackGunHeightÊ± Ö´ĞĞ²Ù×÷£º1¡¢RY»Ö¸´±ê×¼45  2¡¢×îÉÙÌ§¸ß100mm£¨MOVL¾àÀëÌ«Ğ¡ËÙ¶È·Ç³£¿ì£©
+	 double dMinBackGunHeight = tHomeCoord.dZ - (dBackHeightThreshold * dRobotInstallMode);//æœ€å°ï¼Œæœ€å¤§é«˜åº¦å®‰å…¨ä½ç½®åŠ ä¸Šé˜ˆå€¼
+	 // é«˜åº¦å°äºdMinBackGunHeightæ—¶ æ‰§è¡Œæ“ä½œï¼š1ã€RYæ¢å¤æ ‡å‡†45  2ã€æœ€å°‘æŠ¬é«˜100mmï¼ˆMOVLè·ç¦»å¤ªå°é€Ÿåº¦éå¸¸å¿«ï¼‰
 	 tTempCoord = tCurCoord;
 	 tTempCoord.dRX = tHomeCoord.dRX;
 	 tTempCoord.dRY = tHomeCoord.dRY;
 	 if ((dRobotInstallMode > 0.0 && tCurCoord.dZ < dMinBackGunHeight) ||
-		 (dRobotInstallMode < 0.0 && tCurCoord.dZ > dMinBackGunHeight))//ÅĞ¶Ï£¬µ±Ç°Î»ÖÃÓë×î´ó×îĞ¡¸ß¶È±È½Ï
+		 (dRobotInstallMode < 0.0 && tCurCoord.dZ > dMinBackGunHeight))//åˆ¤æ–­ï¼Œå½“å‰ä½ç½®ä¸æœ€å¤§æœ€å°é«˜åº¦æ¯”è¾ƒ
 	 {
 		 if (fabs(tCurCoord.dZ - dMinBackGunHeight) < dMinUpMoveDis)
 		 {
@@ -5418,32 +5470,32 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 if (false == pRobotDriver->ComparePulse(pRobotDriver->m_tHomePulse))
 	 {
-		 //ÒÑĞŞ¸Ä
-		 //SetHintInfo("»Ø°²È«Î»ÖÃÊ§°Ü£¡");
-		 SetHintInfo(XUI::Languge::GetInstance().translate("»Ø°²È«Î»ÖÃÊ§°Ü!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
+		 //å·²ä¿®æ”¹
+		 //SetHintInfo("å›å®‰å…¨ä½ç½®å¤±è´¥ï¼");
+		 SetHintInfo(XUI::Languge::GetInstance().translate("å›å®‰å…¨ä½ç½®å¤±è´¥!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
 		 return;
 	 }
-	 //ÒÑĞŞ¸Ä
-	 //SetHintInfo("»Ø°²È«Î»ÖÃÍê³É£¡");
-	 SetHintInfo(XUI::Languge::GetInstance().translate("»Ø°²È«Î»ÖÃÍê³É!"));//"»Ø°²È«Î»ÖÃÊ§°Ü£¡"
+	 //å·²ä¿®æ”¹
+	 //SetHintInfo("å›å®‰å…¨ä½ç½®å®Œæˆï¼");
+	 SetHintInfo(XUI::Languge::GetInstance().translate("å›å®‰å…¨ä½ç½®å®Œæˆ!"));//"å›å®‰å…¨ä½ç½®å¤±è´¥ï¼"
 
-	 //ÏÈÒÆ¶¯Ğü±ÛÖá-y·½Ïò
+	 //å…ˆç§»åŠ¨æ‚¬è‡‚è½´-yæ–¹å‘
 	 if (-1 != m_vpUnit[nRobotNo]->m_nMeasureAxisNo_up)
 	 {
 		 if (0 != m_vpUnit[nRobotNo]->MoveExAxisFun(0, 9000, 2))return;
 		 m_vpUnit[nRobotNo]->WorldCheckRobotDone();
-		 //ĞèÒª¸ü¸Ä»ñÈ¡ÖáÊı¾İ£¬ÁÙÊ±¸ü¸Ä
+		 //éœ€è¦æ›´æ”¹è·å–è½´æ•°æ®ï¼Œä¸´æ—¶æ›´æ”¹
 		 double dCurExPos = m_vpUnit[nRobotNo]->GetExPositionDis(2);
 		 if (fabs(0 - dCurExPos) > 5.0)
 		 {
-			 XiMessageBox("×Ô¶¯Ê¾½Ì£ºÍâ²¿ÖáÎ´ÔË¶¯µ½Ö¸¶¨Î»ÖÃ");
+			 XiMessageBox("è‡ªåŠ¨ç¤ºæ•™ï¼šå¤–éƒ¨è½´æœªè¿åŠ¨åˆ°æŒ‡å®šä½ç½®");
 			 return;
 		 }
 	 }
-	 //if ((1 == pRobotDriver->m_nRobotInstallDir) && (IDOK == XiMessageBox("ÊÇ·ñ»ØÏÂÁÏ°²È«Î»ÖÃ£¿")))
+	 //if ((1 == pRobotDriver->m_nRobotInstallDir) && (IDOK == XiMessageBox("æ˜¯å¦å›ä¸‹æ–™å®‰å…¨ä½ç½®ï¼Ÿ")))
 	 //{
 		// T_ANGLE_PULSE pSafePoint;
-		// double dAxisUnitT = pRobotDriver->m_tAxisUnit.dSPulse; // TÖáÂö³åµ±Á¿
+		// double dAxisUnitT = pRobotDriver->m_tAxisUnit.dSPulse; // Tè½´è„‰å†²å½“é‡
 		// pSafePoint.nSPulse = pRobotDriver->m_tHomePulse.nSPulse + (90.0 / dAxisUnitT);
 		// pSafePoint.nLPulse = pRobotDriver->m_tHomePulse.nLPulse;
 		// pSafePoint.nUPulse = pRobotDriver->m_tHomePulse.nUPulse;
@@ -5452,7 +5504,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// pSafePoint.nTPulse = pRobotDriver->m_tHomePulse.nTPulse;
 		// pRobotDriver->MoveByJob(pSafePoint, pRobotDriver->m_tBackHomeSpeed, pRobotDriver->m_nExternalAxleType, "MOVJ");
 		// pRobotDriver->CheckRobotDone();
-		// SetHintInfo("»ØÏÂÁÏ°²È«Î»ÖÃÍê³É£¡");
+		// SetHintInfo("å›ä¸‹æ–™å®‰å…¨ä½ç½®å®Œæˆï¼");
 	 //}
 
 	 return;
@@ -5460,10 +5512,10 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
   
  void CAssemblyWeld::OnBnClickedButtonBackHome()
  {
-	 WriteLog("µ¥»÷£º»Ø°²È«Î»ÖÃ");
+	 WriteLog("å•å‡»ï¼šå›å®‰å…¨ä½ç½®");
 	 if (true == m_bAutoWeldWorking)
 	 {
-		 XiMessageBoxOk("ÕıÔÚ¹¤×÷ÖĞ£¬²»ÄÜ»Ø°²È«Î»ÖÃ!");
+		 XiMessageBoxOk("æ­£åœ¨å·¥ä½œä¸­ï¼Œä¸èƒ½å›å®‰å…¨ä½ç½®!");
 		 return;
 	 }
 	 BackHome();
@@ -5485,7 +5537,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 //opini.SetSectionName("PAUSE_OR_CONTINUE");
 	 //opini.ReadString("Pause ", &bPause);
-	 //CString sBtnText = bPause ? "ÔİÍ£" : "¼ÌĞø";
+	 //CString sBtnText = bPause ? "æš‚åœ" : "ç»§ç»­";
 	 //GetDlgItem(IDC_BUTTON_PAUSE_CONTINUE)->SetWindowText(sBtnText);
 	 //GetDlgItem(IDC_BUTTON_PAUSE_CONTINUE)->EnableWindow(!bPause);
 	 //GetDlgItem(IDC_BUTTON_ADVANCED_CONTINUE)->EnableWindow(!bPause);
@@ -5511,15 +5563,15 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //opini.ReadString("Flashback", &bFlashback);
 	 //if (bFlashback && !g_bLocalDebugMark)
 	 //{
-		// SaveErrorData("ÉÁÍË");
+		// SaveErrorData("é—ªé€€");
 	 //}
 	 //opini.WriteString("Flashback", true);
  }
 
  void CAssemblyWeld::OnBnClickedRadioArc()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
-	 WriteLog("µ¥»÷£ºÆğ»¡");
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
+	 WriteLog("å•å‡»ï¼šèµ·å¼§");
 	 m_bStartArcOrNot = TRUE;
 	 COPini cIni;
 	 cIni.SetFileName(OPTIONAL_FUNCTION);
@@ -5529,8 +5581,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedRadioNoarc()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
-	 WriteLog("µ¥»÷£º¿Õ×ß");
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
+	 WriteLog("å•å‡»ï¼šç©ºèµ°");
 	 m_bStartArcOrNot = FALSE;
 	 COPini cIni;
 	 cIni.SetFileName(OPTIONAL_FUNCTION);
@@ -5540,14 +5592,14 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::SaveErrorData(CString strName)
  {
-	 //»ñÈ¡ÏŞÖÆÈÕÆÚ
+	 //è·å–é™åˆ¶æ—¥æœŸ
 	 long lMaxDate = 100;
 	 COPini opini;
 	 opini.SetFileName(DEBUG_INI);
 	 opini.SetSectionName("Debug");
 	 opini.ReadString("MaxDateOfSaveErrorData", &lMaxDate);
 
-	 //»ñÈ¡Ê±¼ä
+	 //è·å–æ—¶é—´
 	 SYSTEMTIME tTime;
 	 GetLocalTime(&tTime);
 	 CString strDate;
@@ -5555,18 +5607,18 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 CString strTime;
 	 strTime.Format("-%.2d-%.2d-%.2d", tTime.wHour, tTime.wMinute, tTime.wSecond);
 
-	 //»ñÈ¡Â·¾¶
+	 //è·å–è·¯å¾„
 	 CheckFolder(ERROR_DATA_PATH);
 	 CString strRootDir = ERROR_DATA_PATH;
 	 CString strDir;
 	 strDir = strRootDir + strDate;
 	 strDir += strTime;
 
-	 //¼ÆËã½ØÖ¹ÈÕÆÚ
+	 //è®¡ç®—æˆªæ­¢æ—¥æœŸ
 	 SYSTEMTIME tDeadline;
 	 CalDeadLine(tDeadline, tTime, -lMaxDate);
 
-	 //Çå³ı½ØÖ¹ÈÕÆÚÇ°µÄÊı¾İ
+	 //æ¸…é™¤æˆªæ­¢æ—¥æœŸå‰çš„æ•°æ®
 	 CFileFind finder;
 	 BOOL bWorking = finder.FindFile(strRootDir + "\\*.*");
 	 while (bWorking)
@@ -5574,15 +5626,15 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 bWorking = finder.FindNextFile();
 		 if (finder.IsDirectory() && !finder.IsDots())
 		 {
-			 //»ñÈ¡ÎÄ¼şÉÏ´ÎĞŞ¸ÄÈÕÆÚ
+			 //è·å–æ–‡ä»¶ä¸Šæ¬¡ä¿®æ”¹æ—¥æœŸ
 			 ULARGE_INTEGER fTime1;
 			 finder.GetCreationTime((FILETIME*)&fTime1);
 
-			 //×ª»¯ÈÕÆÚ
+			 //è½¬åŒ–æ—¥æœŸ
 			 ULARGE_INTEGER fDeadline;
 			 SystemTimeToFileTime(&tDeadline, (FILETIME*)&fDeadline);
 
-			 //ÇåÀí¾ÉÈÕÆÚÎÄ¼ş
+			 //æ¸…ç†æ—§æ—¥æœŸæ–‡ä»¶
 			 if (fTime1.QuadPart < fDeadline.QuadPart)
 			 {
 				 DelFiles(finder.GetFilePath());
@@ -5591,7 +5643,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 }
 	 }
 
-	 //¸´ÖÆÊı¾İ
+	 //å¤åˆ¶æ•°æ®
 	 strDir += strName;
 	 CopyFolder(".\\ConfigFiles", strDir);
 	 CopyFolder(".\\LocalFiles\\OutputFiles", strDir);
@@ -5611,7 +5663,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 pt.y >= tRect.top && 
 		 pt.y <= tRect.bottom)
 	 {
-		 //XiMessageBox("¿Ø¼şÄÚ¹öÂÖ×ª¶¯");
+		 //XiMessageBox("æ§ä»¶å†…æ»šè½®è½¬åŠ¨");
 	 }
 	 return CDialog::OnMouseWheel(nFlags, zDelta, pt);
  }
@@ -5626,7 +5678,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 point.y >= tRect.top &&
 		 point.y <= tRect.bottom)
 	 {
-		 //XiMessageBox("¿Ø¼şÄÚ°´ÏÂÊó±êÓÒ¼ü");
+		 //XiMessageBox("æ§ä»¶å†…æŒ‰ä¸‹é¼ æ ‡å³é”®");
 	 }
 	 CDialog::OnRButtonDown(nFlags, point);
  }
@@ -5641,62 +5693,62 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 point.y >= tRect.top &&
 		 point.y <= tRect.bottom)
 	 {
-		 //XiMessageBox("¿Ø¼şÄÚÊÍ·ÅÊó±êÓÒ¼ü");
+		 //XiMessageBox("æ§ä»¶å†…é‡Šæ”¾é¼ æ ‡å³é”®");
 	 }
 	 CDialog::OnRButtonUp(nFlags, point);
  }
  
  void CAssemblyWeld::OnBnClickedButtonCommonlyUsedIO()
  {
-	 WriteLog("µ¥»÷£º³£ÓÃIO");
+	 WriteLog("å•å‡»ï¼šå¸¸ç”¨IO");
 	 CIOCtrlDlg cIOCtrlDlg(&m_vpUnit);
 	 cIOCtrlDlg.DoModal();
  }
 
  void CAssemblyWeld::OnBnClickedButtonSpare3()
  {
-	 WriteLog("µ¥»÷£º±¸ÓÃ°´Å¥");
+	 WriteLog("å•å‡»ï¼šå¤‡ç”¨æŒ‰é’®");
 //	 E_CAM_ID eCamId;
 //	 CRobotDriverAdaptor *pRobotCtrl;
-//	 if (IDOK == XiMessageBoxGroup(1, "×ó»úÆ÷ÈËÔËĞĞ£¿"))
+//	 if (IDOK == XiMessageBoxGroup(1, "å·¦æœºå™¨äººè¿è¡Œï¼Ÿ"))
 //	 {
 //		 pRobotCtrl = m_vtRobotThread[0]->pRobotCtrl;
-//		 if (IDOK == XiMessageBox("×ó×óÏà»ú²âÁ¿"))
+//		 if (IDOK == XiMessageBox("å·¦å·¦ç›¸æœºæµ‹é‡"))
 //		 {
 //			 eCamId = E_LEFT_ROBOT_LEFT_CAM_H;
 //
 //		 }
-//		 else if (IDOK == XiMessageBox("×óÓÒÏà»ú²âÁ¿"))
+//		 else if (IDOK == XiMessageBox("å·¦å³ç›¸æœºæµ‹é‡"))
 //		 {
 //			 eCamId = E_LEFT_ROBOT_RIGHT_CAM_H;
 //		 }
 //		 else
 //		 {
-//			 XiMessageBox("ÇëÑ¡ÔñÏà»ú");
+//			 XiMessageBox("è¯·é€‰æ‹©ç›¸æœº");
 //			 return;
 //		 }
 //	 }
-//	 else if (IDOK == XiMessageBoxGroup(1, "ÓÒ»úÆ÷ÈËÔËĞĞ£¿"))
+//	 else if (IDOK == XiMessageBoxGroup(1, "å³æœºå™¨äººè¿è¡Œï¼Ÿ"))
 //	 {
 //		 pRobotCtrl = m_vtRobotThread[1]->pRobotCtrl;
-//		 if (IDOK == XiMessageBox("ÓÒ×óÏà»ú²âÁ¿"))
+//		 if (IDOK == XiMessageBox("å³å·¦ç›¸æœºæµ‹é‡"))
 //		 {
 //			 eCamId = E_RIGHT_ROBOT_LEFT_CAM_H;
 //
 //		 }
-//		 else if (IDOK == XiMessageBox("ÓÒÓÒÏà»ú²âÁ¿"))
+//		 else if (IDOK == XiMessageBox("å³å³ç›¸æœºæµ‹é‡"))
 //		 {
 //			 eCamId = E_RIGHT_ROBOT_RIGHT_CAM_H;
 //		 }
 //		 else
 //		 {
-//			 XiMessageBox("ÇëÑ¡ÔñÏà»ú");
+//			 XiMessageBox("è¯·é€‰æ‹©ç›¸æœº");
 //			 return;
 //		 }
 //	 }
 //	 else
 //	 {
-//		 XiMessageBoxGroup(1, "Î´Ñ¡Ôñ»úÆ÷ÈË");
+//		 XiMessageBoxGroup(1, "æœªé€‰æ‹©æœºå™¨äºº");
 //		 return;
 //	 }
 //	 int nRobotNo = pRobotCtrl->m_nRobotNo;
@@ -5728,11 +5780,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 //	 Sleep(10);
 //	 m_vpDHCameraVision[nRobotNo]->CamId2ImageProcess(eCamId)->GetBesideKeyPoints(m_vpDHCameraVision[nRobotNo]->CamId2ImageBuff(eCamId), cpMidKeyPoint, cpBesideKeyPoint,
 //		 vcpLeftOutPoints, vcpRightOutPoints);
-//	 WriteLog("¶şÎ¬µã£ºX£»%d Y:%d", cpMidKeyPoint.x, cpMidKeyPoint.y);
+//	 WriteLog("äºŒç»´ç‚¹ï¼šXï¼›%d Y:%d", cpMidKeyPoint.x, cpMidKeyPoint.y);
 //	 cvCircle(m_vpDHCameraVision[nRobotNo]->CamId2ImageBuff(eCamId), cpMidKeyPoint, 3, CV_RGB(125, 0, 0), 3);
 //	 m_vpDHCameraVision[nRobotNo]->CamId2ImageProcess(eCamId)->m_pXiCvObj->xiSaveImage(m_vpDHCameraVision[nRobotNo]->CamId2ImageBuff(eCamId), ".\\LeftGun_LeftCam\\", NULL, i, 0);
 //
-//	 if (IDOK == XiMessageBox("È·ÈÏÍ¼ÏñÕÒµãÕıÈ·"))
+//	 if (IDOK == XiMessageBox("ç¡®è®¤å›¾åƒæ‰¾ç‚¹æ­£ç¡®"))
 //	 {
 //		 fprintf(CoutMeasPoint, "%d	%d	%d\n", i, cpMidKeyPoint.x, cpMidKeyPoint.y);
 //		 T_ROBOT_COORS tRobotCurCoord = pRobotCtrl->GetCurrentPos();
@@ -5750,7 +5802,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonSpare1()
  {
-	 WriteLog("µ¥»÷£º°ü½Ç²ÎÊı");
+	 WriteLog("å•å‡»ï¼šåŒ…è§’å‚æ•°");
 	 int nRobotNo = 0;
 	 CUnit* pUnit = m_vpUnit[nRobotNo];
 	 CWrapAngleParam cWrapAngleParam(pUnit->m_tContralUnit.strUnitName);
@@ -5763,11 +5815,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);
 	 if (m_bNaturalPop)
 	 {
-		 WriteLog("µ¥»÷£º´ò¿ªÌáÊ¾ĞÔµ¯´°");
+		 WriteLog("å•å‡»ï¼šæ‰“å¼€æç¤ºæ€§å¼¹çª—");
 	 } 
 	 else
 	 {
-		 WriteLog("µ¥»÷£º¹Ø±ÕÌáÊ¾ĞÔµ¯´°");
+		 WriteLog("å•å‡»ï¼šå…³é—­æç¤ºæ€§å¼¹çª—");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -5781,11 +5833,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);
 	 if (m_bProcessPop)
 	 {
-		 WriteLog("µ¥»÷£º´ò¿ª¹¤ÒÕµ¯´°");
+		 WriteLog("å•å‡»ï¼šæ‰“å¼€å·¥è‰ºå¼¹çª—");
 	 }
 	 else
 	 {
-		 WriteLog("µ¥»÷£º¹Ø±Õ¹¤ÒÕµ¯´°");
+		 WriteLog("å•å‡»ï¼šå…³é—­å·¥è‰ºå¼¹çª—");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -5795,9 +5847,9 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonAdvancedContinue()
  {
-	 WriteLog("µ¥»÷£ºµãÔÆ´¦Àí");
+	 WriteLog("å•å‡»ï¼šç‚¹äº‘å¤„ç†");
 	 long long lTimeS = XI_clock();
-	 // Ö´ĞĞµãÔÆ´¦Àí
+	 // æ‰§è¡Œç‚¹äº‘å¤„ç†
 	 int nRobotNo = 0;
 	 vector<CvPoint3D64f> vtPointCloud2;
 	 vector<CvPoint3D32f> vtPointCloud2_32;
@@ -5821,7 +5873,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //CString PointCloudFileName_2 = "LineScan\\Gantry\\PointCloud\\Camera2_Thread0.txt";
 	 //CString PointCloudFileName_3 = "LineScan\\Gantry\\PointCloud\\Camera3_Thread0.txt";
 	 ////CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
-	 //if (false /*== g_bRemoveCloud*/)//¿ªÆôÈ¥µãÔÆ±³¾°¹¦ÄÜ
+	 //if (false /*== g_bRemoveCloud*/)//å¼€å¯å»ç‚¹äº‘èƒŒæ™¯åŠŸèƒ½
 	 //{
 		// char ID2[] = "BackGround";
 		// char ID3[] = "BackGround1";
@@ -5829,7 +5881,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName_2, vtPointCloud2);
 		// m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName_3, vtPointCloud3);
 		// long long l2 = XI_clock();
-		// WriteLog("¼ÓÔØÏßÉ¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		// WriteLog("åŠ è½½çº¿æ‰«ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 		// for (int p2 = 0; p2 < vtPointCloud2.size(); p2++)
 		// {
 		//	 CvPoint3D32f tmp;
@@ -5846,13 +5898,13 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// PointCloudSize2 = vtPointCloud2_32.size();
 		// pPointCloud3 = (CvPoint3D32f*)vtPointCloud3_32.data();
 		// PointCloudSize3 = vtPointCloud3_32.size();
-		// //if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("ÊÇ·ñÉ¨Ãè¿Õ¹¤×÷Ì¨È¥³ı¶àÓÚµãÔÆ£¨Ö´ĞĞÒ»´Î¼´¿É£©"))
+		// //if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("æ˜¯å¦æ‰«æç©ºå·¥ä½œå°å»é™¤å¤šäºç‚¹äº‘ï¼ˆæ‰§è¡Œä¸€æ¬¡å³å¯ï¼‰"))
 		// //{
 		//	// CString directory = _T("Local_Files\\ExtLib\\Vision\\BackgroundCloud");
-		//	// m_pWeldAfterMeasure->DelPngFile(directory);//Ã¿´ÎÈ¥±³¾°Ç°ÏÈÉ¾³ıÒÑ¾­ÓĞµÄ±³¾°ÎÄ¼ş
+		//	// m_pWeldAfterMeasure->DelPngFile(directory);//æ¯æ¬¡å»èƒŒæ™¯å‰å…ˆåˆ é™¤å·²ç»æœ‰çš„èƒŒæ™¯æ–‡ä»¶
 		//	// BackgroundCloudFileSave(ID2, pPointCloud2, PointCloudSize2, 1.0F, true);
 		//	// BackgroundCloudFileSave(ID3, pPointCloud3, PointCloudSize3, 1.0F, true);
-		//	// XiMessageBox("È¥µãÔÆ±³¾°´¦Àí³É¹¦");
+		//	// XiMessageBox("å»ç‚¹äº‘èƒŒæ™¯å¤„ç†æˆåŠŸ");
 		//	// return;
 		// //}
 		// l1 = XI_clock();
@@ -5861,7 +5913,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// l1 = XI_clock();
 		////PointCloudSize3 = BackgroundCloudRemove(ID3, pPointCloud3, PointCloudSize3, 10.0F, 5.0F) - 1;
 		// l2 = XI_clock();
-		// WriteLog("È¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		// WriteLog("å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 
 		// PointCloudSize = PointCloudSize2 + PointCloudSize3;
 		// for (int pn = 0; pn < PointCloudSize2; pn++)
@@ -5879,20 +5931,20 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// l1 = XI_clock();
 		// pPointCloud = m_pWeldAfterMeasure->SaveRemoveCloud(pRobotDriver, FileName, vtPointCloud, PointCloudSize);
 		// l2 = XI_clock();
-		// WriteLog("±£´æÈ¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		// WriteLog("ä¿å­˜å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 	 //}
 
-	 //ÏßÉ¨
+	 //çº¿æ‰«
 	 CString PointCloudFileName = GetCurLineScanPointCloudFile();
 
 	 //CStatisticalData* pStatisticalData = CStatisticalData::getInstance();
-	 if (false /*== g_bRemoveCloud*/)//¿ªÆôÈ¥µãÔÆ±³¾°¹¦ÄÜ
+	 if (false /*== g_bRemoveCloud*/)//å¼€å¯å»ç‚¹äº‘èƒŒæ™¯åŠŸèƒ½
 	 {
 		 char ID[] = "BackGround";
 		 long long l1 = XI_clock();
 		 m_pWeldAfterMeasure->LoadContourData(pRobotDriver, PointCloudFileName, vtPointCloud2);
 		 long long l2 = XI_clock();
-		 WriteLog("¼ÓÔØÏßÉ¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		 WriteLog("åŠ è½½çº¿æ‰«ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 		 for (int p2 = 0; p2 < vtPointCloud2.size(); p2++)
 		 {
 			 CvPoint3D32f tmp;
@@ -5901,12 +5953,12 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 }
 		 pPointCloud2 = (CvPoint3D32f*)vtPointCloud2_32.data();
 		 PointCloudSize2 = vtPointCloud2_32.size();
-		 if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("ÊÇ·ñÉ¨Ãè¿Õ¹¤×÷Ì¨È¥³ı¶àÓÚµãÔÆ£¨Ö´ĞĞÒ»´Î¼´¿É£©"))
+		 if ((TRUE == m_bNaturalPop) && IDOK == XiMessageBox("æ˜¯å¦æ‰«æç©ºå·¥ä½œå°å»é™¤å¤šäºç‚¹äº‘ï¼ˆæ‰§è¡Œä¸€æ¬¡å³å¯ï¼‰"))
 		 {
 			 CString directory = _T("Local_Files\\ExtLib\\Vision\\BackgroundCloud");
-			 m_pWeldAfterMeasure->DelPngFile(directory);//Ã¿´ÎÈ¥±³¾°Ç°ÏÈÉ¾³ıÒÑ¾­ÓĞµÄ±³¾°ÎÄ¼ş
+			 m_pWeldAfterMeasure->DelPngFile(directory);//æ¯æ¬¡å»èƒŒæ™¯å‰å…ˆåˆ é™¤å·²ç»æœ‰çš„èƒŒæ™¯æ–‡ä»¶
 			 BackgroundCloudFileSave(ID, pPointCloud2, PointCloudSize2, 1.0F, true);
-			 XiMessageBox("È¥µãÔÆ±³¾°´¦Àí³É¹¦");
+			 XiMessageBox("å»ç‚¹äº‘èƒŒæ™¯å¤„ç†æˆåŠŸ");
 			 return;
 		 }
 		 l1 = XI_clock();
@@ -5914,10 +5966,10 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 PointCloudSize2 = BackgroundCloudRemove(ID, pPointCloud2, PointCloudSize2, 
 			 PARA_RECOGNITION(dBackgroundCloudRemoveRadius),
 			 PARA_RECOGNITION(dBackgroundCloudRemoveOffset));
-		 PointCloudSize2--;//·ÀÖ¹Òç³ö
+		 PointCloudSize2--;//é˜²æ­¢æº¢å‡º
 
 		 l2 = XI_clock();
-		 WriteLog("È¥³ı¹¤×÷Ì¨µãÔÆºÄÊ±£º%dms", l2 - l1);
+		 WriteLog("å»é™¤å·¥ä½œå°ç‚¹äº‘è€—æ—¶ï¼š%dms", l2 - l1);
 		 vtPointCloud.clear();
 		 for (int pn = 0; pn < PointCloudSize2; pn++)
 		 {
@@ -5930,19 +5982,19 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 }
 	 if (false == m_pWeldAfterMeasure->PointCloudProcess(TRUE == m_nUseModel, pPointCloud, PointCloudSize))
 	 {
-		 XiMessageBox("Ê¶±ğ´¦ÀíÊ§°Ü!");
-		// m_lWorkTime += (XI_clock() - lTimeS); // ¹¤×÷Ê±¼äÖĞµÄµãÔÆ´¦Àí°´Å¥Ê±¼ä
+		 XiMessageBox("è¯†åˆ«å¤„ç†å¤±è´¥!");
+		// m_lWorkTime += (XI_clock() - lTimeS); // å·¥ä½œæ—¶é—´ä¸­çš„ç‚¹äº‘å¤„ç†æŒ‰é’®æ—¶é—´
 
 		 //pStatisticalData->UpdateWorkTime((XI_clock() - lTimeS));
 		 return;	
 	 }
 
-	 // ÏÔÊ¾½»»¥½çÃæ
+	 // æ˜¾ç¤ºäº¤äº’ç•Œé¢
 	 RunInteractiveWindow(pUnit->m_tContralUnit.strUnitName);
-     // ×Ô¶¯·Ö×é
+     // è‡ªåŠ¨åˆ†ç»„
 	 AutomaticGrouping(pUnit->m_tContralUnit.strUnitName);
-	 XiMessageBox("½Ó¿Ú¸üĞÂÍê³É");
-	 //m_lWorkTime += (XI_clock() - lTimeS); // ¹¤×÷Ê±¼äÖĞµÄµãÔÆ´¦Àí°´Å¥Ê±¼ä
+	 XiMessageBox("æ¥å£æ›´æ–°å®Œæˆ");
+	 //m_lWorkTime += (XI_clock() - lTimeS); // å·¥ä½œæ—¶é—´ä¸­çš„ç‚¹äº‘å¤„ç†æŒ‰é’®æ—¶é—´
 	 //pStatisticalData->UpdateWorkTime((XI_clock() - lTimeS));
 	 return;
  }
@@ -5950,17 +6002,17 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  void CAssemblyWeld::OnBnClickedButtonTablePara()
  {
 	 /*
-     ¶ËµãĞøº¸¹¦ÄÜ£º
-     1¡¢¼ì²éµ±Ç°×´Ì¬
-     2¡¢»ñÈ¡µ±Ç°º¸½ÓĞòºÅ
-     3¡¢»ñÈ¡º¸½Ó×´Ì¬
-     4¡¢»ñÈ¡º¸½Ó¹¤¼şÀàĞÍ
-     5¡¢»ñÈ¡Í£Ö¹Ê±º¸½ÓÎ»ÖÃ
-     6¡¢»ñÈ¡º¸½ÓÌØĞÔ£¬£¨ÒÑÖªÖÕµã£¬Î´ÖªÖÕµã£¬ÏÈ²âºóº¸£¬ÊÇ·ñ¸ú×Ù£¬¸ô°åÀà¶¼ÊÇÒÑÖªÆğÊ¼ÖÕÖ¹µãÖ»Ğè¼ÇÂ¼µ±Ç°º¸½Ó³¤¶È¡¢µ±Ç°º¸½Ó·İÊı¡¢Èç¹ûÊÇ¸ú×ÙĞèÒª½øĞĞËø¶¨
-     ²»¸ú×ÙÔò²»ĞèÒª£©
+     ç«¯ç‚¹ç»­ç„ŠåŠŸèƒ½ï¼š
+     1ã€æ£€æŸ¥å½“å‰çŠ¶æ€
+     2ã€è·å–å½“å‰ç„Šæ¥åºå·
+     3ã€è·å–ç„Šæ¥çŠ¶æ€
+     4ã€è·å–ç„Šæ¥å·¥ä»¶ç±»å‹
+     5ã€è·å–åœæ­¢æ—¶ç„Šæ¥ä½ç½®
+     6ã€è·å–ç„Šæ¥ç‰¹æ€§ï¼Œï¼ˆå·²çŸ¥ç»ˆç‚¹ï¼ŒæœªçŸ¥ç»ˆç‚¹ï¼Œå…ˆæµ‹åç„Šï¼Œæ˜¯å¦è·Ÿè¸ªï¼Œéš”æ¿ç±»éƒ½æ˜¯å·²çŸ¥èµ·å§‹ç»ˆæ­¢ç‚¹åªéœ€è®°å½•å½“å‰ç„Šæ¥é•¿åº¦ã€å½“å‰ç„Šæ¥ä»½æ•°ã€å¦‚æœæ˜¯è·Ÿè¸ªéœ€è¦è¿›è¡Œé”å®š
+     ä¸è·Ÿè¸ªåˆ™ä¸éœ€è¦ï¼‰
      */
-     //»ñÈ¡¹¤¼şÀàĞÍ
-	 WriteLog("µ¥»÷£º¶ÏµãĞøº¸");
+     //è·å–å·¥ä»¶ç±»å‹
+	 WriteLog("å•å‡»ï¼šæ–­ç‚¹ç»­ç„Š");
 	 for (int i = 0; i < m_vpUnit.size(); i++)
 	 {
 		 CHECK_BOOL(m_vpUnit[i]->CheckIsReadyRun());
@@ -5976,11 +6028,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);
 	 if (m_bCleanGunEnable)
 	 {
-		 WriteLog("µ¥»÷£º¿ªÆôÇåÇ¹");
+		 WriteLog("å•å‡»ï¼šå¼€å¯æ¸…æª");
 	 }
 	 else
 	 {
-		 WriteLog("µ¥»÷£º¹Ø±ÕÇåÇ¹");
+		 WriteLog("å•å‡»ï¼šå…³é—­æ¸…æª");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -5993,11 +6045,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);
 	 if (m_bMeausreThickEnable)
 	 {
-		 WriteLog("µ¥»÷£º¿ªÆô²âºñ");
+		 WriteLog("å•å‡»ï¼šå¼€å¯æµ‹åš");
 	 }
 	 else
 	 {
-		 WriteLog("µ¥»÷£º¹Ø±Õ²âºñ");
+		 WriteLog("å•å‡»ï¼šå…³é—­æµ‹åš");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -6007,15 +6059,15 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedCheckGray2()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 UpdateData(TRUE);
 	 if (m_bNeedWrap)
 	 {
-		 WriteLog("µ¥»÷£º°ü½Ç");
+		 WriteLog("å•å‡»ï¼šåŒ…è§’");
 	 }
 	 else
 	 {
-		 WriteLog("µ¥»÷£º²»°ü½Ç");
+		 WriteLog("å•å‡»ï¼šä¸åŒ…è§’");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -6025,16 +6077,16 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedCheckGray3()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
-	 // ±¸ÓÃ ±¸ÓÃ
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
+	 // å¤‡ç”¨ å¤‡ç”¨
 	 //UpdateData(TRUE);
 	 //if (true)
 	 //{
-		// WriteLog("µ¥»÷£ºÁ¢º¸ÏòÉÏ");
+		// WriteLog("å•å‡»ï¼šç«‹ç„Šå‘ä¸Š");
 	 //}
 	 //else
 	 //{
-		// WriteLog("µ¥»÷£ºÁ¢º¸ÏòÏÂ");
+		// WriteLog("å•å‡»ï¼šç«‹ç„Šå‘ä¸‹");
 	 //}
 	 //COPini opini;
 	 //opini.SetFileName(OPTIONAL_FUNCTION);
@@ -6046,11 +6098,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);	 
 	 if (m_bTeachPop)
 	 {
-		 WriteLog("µ¥»÷£º´ò¿ªÊ¾½Ìµ¯´°");
+		 WriteLog("å•å‡»ï¼šæ‰“å¼€ç¤ºæ•™å¼¹çª—");
 	 } 
 	 else
 	 {
-		 WriteLog("µ¥»÷£º¹Ø±ÕÊ¾½Ìµ¯´°");
+		 WriteLog("å•å‡»ï¼šå…³é—­ç¤ºæ•™å¼¹çª—");
 	 }
 	 COPini opini;
 	 opini.SetFileName(OPTIONAL_FUNCTION);
@@ -6060,24 +6112,24 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonSystemPara2()
  {
-	 WriteLog("µ¥»÷£º½»»¥½çÃæ");
+	 WriteLog("å•å‡»ï¼šäº¤äº’ç•Œé¢");
 	 int nRobotNo = 0;
 	 CUnit* pUnit = m_vpUnit[nRobotNo];
 	 CRobotDriverAdaptor *pRobotDriver = m_vpRobotDriver[nRobotNo];
 	 CHECK_BOOL(CreateObject(m_tChoseWorkPieceType, pUnit, &m_pWeldAfterMeasure));
-	 // ÏÔÊ¾´¦Àí½á¹û ½»»¥½çÃæ
+	 // æ˜¾ç¤ºå¤„ç†ç»“æœ äº¤äº’ç•Œé¢
 	 //m_pWeldAfterMeasure->LoadCloudProcessResultNew(OUTPUT_PATH + pUnit->m_tContralUnit.strUnitName + "\\" + POINT_CLOUD_IDENTIFY_RESULT);
 	 //((GenericWeld*)m_pWeldAfterMeasure)->Segmentation();
 	 RunInteractiveWindow(pUnit->m_tContralUnit.strUnitName);
 	 m_pWeldAfterMeasure->SetFilePath();
 	 //m_pWeldAfterMeasure->SplitCloudProcessResult(pUnit->m_tContralUnit.strUnitName);
-	 // ×Ô¶¯·Ö×é
+	 // è‡ªåŠ¨åˆ†ç»„
 	 if (54 != m_vpRobotDriver[0]->m_nExternalAxleType)
 	 {
 		 //AutomaticGrouping(pUnit->m_tContralUnit.strUnitName);
 	 }
 	 
-	 //////º¸·ì½Ó¿Ú¸ü¸Ä
+	 //////ç„Šç¼æ¥å£æ›´æ”¹
 	 //CHECK_BOOL(CreateObject(m_tChoseWorkPieceType, pUnit, &m_pWeldAfterMeasure));
 	 //m_pWeldAfterMeasure->LoadCloudProcessResultNew("GraphData\\PointCloudIdentifyReaultAfter.txt");
 	 //SmallPartsConvertor convertor;
@@ -6085,7 +6137,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //convertor.compute(m_nRobotHangPos/*HANGING_POS*/, SORT_LEFT_TO_RIGHT);
 	 //CDiaphragmWeld cDiaphragmWeld(pRobotDriver, E_DIAPHRAGM, m_pScanInitLeft);
 	 //cDiaphragmWeld.InitWorkPieceReleveInfo(m_vpRobotDriver[0]);
-	 XiMessageBox("½Ó¿Ú¸üĞÂÍê³É");
+	 XiMessageBox("æ¥å£æ›´æ–°å®Œæˆ");
 	 return;
  }
 
@@ -6104,23 +6156,23 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 if(!SetCurLineScanFolder(nCurSel))
 	 {
-		 XUI::MesBox::PopError(_T("ÉèÖÃ¹¤×÷Ì¨Ê§°Ü£¬ÎŞĞ§µÄ¹¤×÷Ì¨±àºÅ{0}£¡"), nCurSel);
+		 XUI::MesBox::PopError(_T("è®¾ç½®å·¥ä½œå°å¤±è´¥ï¼Œæ— æ•ˆçš„å·¥ä½œå°ç¼–å·{0}ï¼"), nCurSel);
 		 m_comboTableGroupleft.SetCurSel(nWorkTableNo);
 		 return;
 	 }
 
 	 opini.WriteString("CurUseTableNo", nCurSel);
 	 LoadRobotandCar(m_vpRobotDriver[0], nCurSel);
-	 XiMessageBox("¸ü¸Ä¹¤×÷Ì¨Íê±Ï£¡");
+	 XiMessageBox("æ›´æ”¹å·¥ä½œå°å®Œæ¯•ï¼");
  }
 
  void CAssemblyWeld::OnBnClickedButtonTablePara2()
  {
-	 WriteLog("µ¥»÷£º¾«¶ÈĞ£Ñé");
+	 WriteLog("å•å‡»ï¼šç²¾åº¦æ ¡éªŒ");
 	 int nRobotNo = -1;
 	 for (int i = 0; i < m_vpRobotDriver.size(); i++)
 	 {
-		 if (1 == XUI::MesBox::PopOkCancel("{0} ÑéÖ¤£¿", m_vpRobotDriver[i]->m_strCustomName))
+		 if (1 == XUI::MesBox::PopOkCancel("{0} éªŒè¯ï¼Ÿ", m_vpRobotDriver[i]->m_strCustomName))
 		 {
 			 nRobotNo = m_vpRobotDriver[i]->m_nRobotNo;
 			 break;
@@ -6128,9 +6180,9 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 }
 	 if (nRobotNo < 0) return;
 
-	 if (1 == XiMessageBox("×ø±ê×ª»»ÑéÖ¤£¿"))
+	 if (1 == XiMessageBox("åæ ‡è½¬æ¢éªŒè¯ï¼Ÿ"))
 	 {
-		 // ×ø±ê×ª»»ÑéÖ¤
+		 // åæ ‡è½¬æ¢éªŒè¯
 		 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 		 T_ROBOT_COORS tRobotCoors;
 		 T_ROBOT_COORS tReadRobotCoors = pRobotDriver->GetCurrentPos();
@@ -6139,17 +6191,17 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 pRobotDriver->SetPosVar(99, tRobotCoors);
 		 return;
 	 }
-	 else if (1 == XiMessageBox("¼ÆËãÏà»ú¹¤¾ß£¿"))
+	 else if (1 == XiMessageBox("è®¡ç®—ç›¸æœºå·¥å…·ï¼Ÿ"))
 	 {
-		 // ¼ÆËãÏà»ú¹¤¾ß
-		 int nCameraNo = 1 == XiMessageBox("È·¶¨Ïà»ú0  È¡ÏûÏà»ú1") ? 0 : 1;
+		 // è®¡ç®—ç›¸æœºå·¥å…·
+		 int nCameraNo = 1 == XiMessageBox("ç¡®å®šç›¸æœº0  å–æ¶ˆç›¸æœº1") ? 0 : 1;
 		 T_ROBOT_COORS tCamTool;
 		 GetCameraTool(nRobotNo, nCameraNo, tCamTool);
 		 return;
 	 }
-	 else if (1 == XiMessageBox("Ç¹¼â×ø±ê ×ª Ïà»ú¹¤¾ß£¿"))
+	 else if (1 == XiMessageBox("æªå°–åæ ‡ è½¬ ç›¸æœºå·¥å…·ï¼Ÿ"))
 	 {
-		 // Ç¹¼â×ø±ê ×ª Ïà»ú¹¤¾ß ×ßµ½ ÑéÖ¤
+		 // æªå°–åæ ‡ è½¬ ç›¸æœºå·¥å…· èµ°åˆ° éªŒè¯
 		 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 		 T_ROBOT_COORS tGunCoord;
 		 T_ROBOT_COORS tCamCoord;
@@ -6158,9 +6210,9 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 pRobotDriver->SetPosVar(99, tCamCoord);
 		 return;
 	 }
-	 else if (1 == XiMessageBox("Ïà»úÊÖÑÛ¾«¶ÈÑéÖ¤£¿"))
+	 else if (1 == XiMessageBox("ç›¸æœºæ‰‹çœ¼ç²¾åº¦éªŒè¯ï¼Ÿ"))
 	 {
-		 // Ïà»úÊÖÑÛ¾«¶ÈÑéÖ¤
+		 // ç›¸æœºæ‰‹çœ¼ç²¾åº¦éªŒè¯
 		 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 		 CUnit* pUnit = m_vpUnit[nRobotNo];
 		 int nCameraNo = 0;
@@ -6188,22 +6240,22 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 }
 		 
 		 pRobotDriver->SetPosVar(99, tWeldCoord);
-		 //ÒÑĞŞ¸Ä
-		 XUI::MesBox::PopInfo("Ïà»úÖĞĞÄ£º{0:.4f} {1:.4f} {2:.4f} Cur: {3:.4f} {4:.4f} {5:.4f} ",
+		 //å·²ä¿®æ”¹
+		 XUI::MesBox::PopInfo("ç›¸æœºä¸­å¿ƒï¼š{0:.4f} {1:.4f} {2:.4f} Cur: {3:.4f} {4:.4f} {5:.4f} ",
 			 tWeldCoord.dX, tWeldCoord.dY, tWeldCoord.dZ, tRobotCurCoord.dX, tRobotCurCoord.dY, tRobotCurCoord.dZ);
-		// XiMessageBox("Ïà»úÖĞĞÄ£º%f %f %f Cur: %f %f %f ", 
+		// XiMessageBox("ç›¸æœºä¸­å¿ƒï¼š%f %f %f Cur: %f %f %f ", 
 			// tWeldCoord.dX, tWeldCoord.dY, tWeldCoord.dZ, tRobotCurCoord.dX, tRobotCurCoord.dY, tRobotCurCoord.dZ);
 	 }
-	 else if (1 == XiMessageBox("ÁúÃÅ×ø±ê×ª»»¹ØÏµÑéÖ¤"))
+	 else if (1 == XiMessageBox("é¾™é—¨åæ ‡è½¬æ¢å…³ç³»éªŒè¯"))
 	 {
-		 //×ª»»test
+		 //è½¬æ¢test
 		 CvPoint3D64f GantryPoint = { 4084.295,0,1859.581 };/*{ 4084.295,-278.772,1859.581 };2721.228*/
 		 CvPoint3D64f RobotPoint = { 281.778,-5401.415,1859.222 };
 		 CvPoint3D64f reRobotPoint = m_vpUnit[1]->TransCoor_Gantry2RobotNew(GantryPoint);
 		 CvPoint3D64f reGantryPoint = m_vpUnit[1]->TransCoor_Robot2Gantry(RobotPoint);
 		 //XiMessageBox("");
 	 }
-	 //else if (1 == XiMessageBox("ÊÇ·ñ¼ÆËãÇåÇ¹Æ÷½Ç¶È"))
+	 //else if (1 == XiMessageBox("æ˜¯å¦è®¡ç®—æ¸…æªå™¨è§’åº¦"))
 	 //{
 		// XiAlgorithm alg;
 		// XI_POINT p1, p2;
@@ -6237,21 +6289,21 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonTablePara3()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 int nRobotNo = 0;
-	 if (IDOK == XiMessageBox("1ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 if (IDOK == XiMessageBox("1å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 0;
 	 }
-	 else if (IDOK == XiMessageBox("2ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("2å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 1;
 	 }
-	 else if (IDOK == XiMessageBox("3ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("3å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 2;
 	 }
-	 else if (IDOK == XiMessageBox("4ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("4å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 3;
 	 }
@@ -6261,22 +6313,22 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 std::vector<CString> vStrName(0);
 	 std::vector<double> vnInputData(0);
 	 COPini opini;
-	 //ÒÑĞŞ¸Ä
-	 CString str1 = "Æ½º¸²¹³¥: Ë®Æ½·½Ïò:Íâ¼ÓƒÈ¼õ ¸ß¶È·½Ïò:ÉÏ¼ÓÏÂ¼õ";
+	 //å·²ä¿®æ”¹
+	 CString str1 = "å¹³ç„Šè¡¥å¿: æ°´å¹³æ–¹å‘:å¤–åŠ å…§å‡ é«˜åº¦æ–¹å‘:ä¸ŠåŠ ä¸‹å‡";
 	 str1 = XUI::Languge::GetInstance().translate(str1.GetBuffer());
 	 opini.SetFileName(DATA_PATH + pUnit->m_tContralUnit.strUnitName + WELD_PARAM_FILE);
-	 if (TRUE == XiMessageBox("ÊÇ·ñĞŞ¸ÄÆ½º¸  0¡ã 90¡ã 180¡ã 270¡ã ·½ÏòÆ«ÒÆÁ¿£¿"))
+	 if (TRUE == XiMessageBox("æ˜¯å¦ä¿®æ”¹å¹³ç„Š  0Â° 90Â° 180Â° 270Â° æ–¹å‘åç§»é‡ï¼Ÿ"))
 	 {
-		 vStrName.push_back("Æ½º¸0¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸0¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸90¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸90¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸180¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸180¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸270¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸270¡ã´¹Ö±:");
-		 vStrName.push_back("¸ú×Ù Ë®Æ½:");
-		 vStrName.push_back("¸ú×Ù ´¹Ö±:");
+		 vStrName.push_back("å¹³ç„Š0Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š0Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š90Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š90Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š180Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š180Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š270Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š270Â°å‚ç›´:");
+		 vStrName.push_back("è·Ÿè¸ª æ°´å¹³:");
+		 vStrName.push_back("è·Ÿè¸ª å‚ç›´:");
 		 opini.SetSectionName("WeldCompVal0");
 		 opini.ReadString("FlatWeldHorComp", &dFlatWeldHorComp);
 		 opini.ReadString("FlatWeldHeightComp", &dFlatWeldHeightComp);
@@ -6302,7 +6354,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.ReadString("FlatWeldHeightComp", &dFlatWeldHeightComp);
 		 vnInputData.push_back(dFlatWeldHorComp);
 		 vnInputData.push_back(dFlatWeldHeightComp);
-		 ParamInput cParamDlg("Æ½º¸²¹³¥: Ë®Æ½·½Ïò:Íâ¼ÓƒÈ¼õ ¸ß¶È·½Ïò:ÉÏ¼ÓÏÂ¼õ", vStrName, &vnInputData);
+		 ParamInput cParamDlg("å¹³ç„Šè¡¥å¿: æ°´å¹³æ–¹å‘:å¤–åŠ å…§å‡ é«˜åº¦æ–¹å‘:ä¸ŠåŠ ä¸‹å‡", vStrName, &vnInputData);
 		 cParamDlg.DoModal();
 		 opini.SetSectionName("WeldCompVal0");
 		 opini.WriteString("FlatWeldHorComp", vnInputData[0]);
@@ -6320,16 +6372,16 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.WriteString("FlatWeldHorComp", vnInputData[8]);
 		 opini.WriteString("FlatWeldHeightComp", vnInputData[9]);
 	 }
-	 else if (TRUE == XiMessageBox("ÊÇ·ñĞŞ¸ÄÆ½º¸  45¡ã 135¡ã 225¡ã 315¡ã ·½ÏòÆ«ÒÆÁ¿£¿"))
+	 else if (TRUE == XiMessageBox("æ˜¯å¦ä¿®æ”¹å¹³ç„Š  45Â° 135Â° 225Â° 315Â° æ–¹å‘åç§»é‡ï¼Ÿ"))
 	 {
-		 vStrName.push_back("Æ½º¸45¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸45¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸135¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸135¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸225¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸225¡ã´¹Ö±:");
-		 vStrName.push_back("Æ½º¸315¡ãË®Æ½:");
-		 vStrName.push_back("Æ½º¸315¡ã´¹Ö±:");
+		 vStrName.push_back("å¹³ç„Š45Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š45Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š135Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š135Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š225Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š225Â°å‚ç›´:");
+		 vStrName.push_back("å¹³ç„Š315Â°æ°´å¹³:");
+		 vStrName.push_back("å¹³ç„Š315Â°å‚ç›´:");
 		 opini.SetSectionName("WeldCompVal45");
 		 opini.ReadString("FlatWeldHorComp", &dFlatWeldHorComp);
 		 opini.ReadString("FlatWeldHeightComp", &dFlatWeldHeightComp);
@@ -6350,7 +6402,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.ReadString("FlatWeldHeightComp", &dFlatWeldHeightComp);
 		 vnInputData.push_back(dFlatWeldHorComp);
 		 vnInputData.push_back(dFlatWeldHeightComp);
-		 ParamInput cParamDlg("Æ½º¸²¹³¥: Ë®Æ½·½Ïò:Íâ¼ÓƒÈ¼õ ¸ß¶È·½Ïò:ÉÏ¼ÓÏÂ¼õ", vStrName, &vnInputData);
+		 ParamInput cParamDlg("å¹³ç„Šè¡¥å¿: æ°´å¹³æ–¹å‘:å¤–åŠ å…§å‡ é«˜åº¦æ–¹å‘:ä¸ŠåŠ ä¸‹å‡", vStrName, &vnInputData);
 		 cParamDlg.DoModal();
 		 opini.SetSectionName("WeldCompVal45");
 		 opini.WriteString("FlatWeldHorComp", vnInputData[0]);
@@ -6370,21 +6422,21 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonTablePara4()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 int nRobotNo = 0;
-	 if (IDOK == XiMessageBox("1ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 if (IDOK == XiMessageBox("1å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 0;
 	 }
-	 else if (IDOK == XiMessageBox("2ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("2å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 1;
 	 }
-	 else if (IDOK == XiMessageBox("3ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("3å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 2;
 	 }
-	 else if (IDOK == XiMessageBox("4ºÅ»úĞµ±Û²ÎÊıµ÷Õû"))
+	 else if (IDOK == XiMessageBox("4å·æœºæ¢°è‡‚å‚æ•°è°ƒæ•´"))
 	 {
 		 nRobotNo = 3;
 	 }
@@ -6394,20 +6446,20 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 std::vector<CString> vStrName(0);
 	 std::vector<double> vnInputData(0);
 	 COPini opini;
-	 //ÒÑĞŞ¸Ä
-	 CString str1 = "Á¢º¸²¹³¥:º¸Ë¿·½Ïò:³¤¼Ó¶Ì¼õ º¸Ë¿´¹Ö±·½Ïò:Äæ¼ÓË³¼õ";
+	 //å·²ä¿®æ”¹
+	 CString str1 = "ç«‹ç„Šè¡¥å¿:ç„Šä¸æ–¹å‘:é•¿åŠ çŸ­å‡ ç„Šä¸å‚ç›´æ–¹å‘:é€†åŠ é¡ºå‡";
 	 str1 = XUI::Languge::GetInstance().translate(str1.GetBuffer());
 	 opini.SetFileName(DATA_PATH + pUnit->m_tContralUnit.strUnitName + WELD_PARAM_FILE);
-	 if (TRUE == XiMessageBox("ÊÇ·ñĞŞ¸ÄÁ¢º¸  45¡ã 135¡ã 225¡ã 315¡ã ·½ÏòÆ«ÒÆÁ¿£¿"))
+	 if (TRUE == XiMessageBox("æ˜¯å¦ä¿®æ”¹ç«‹ç„Š  45Â° 135Â° 225Â° 315Â° æ–¹å‘åç§»é‡ï¼Ÿ"))
 	 {
-		 vStrName.push_back("Á¢º¸45¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸45¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸135¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸135¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸225¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸225¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸315¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸315¡ã´¹Ö±:");
+		 vStrName.push_back("ç«‹ç„Š45Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š45Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š135Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š135Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š225Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š225Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š315Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š315Â°å‚ç›´:");
 		 opini.SetSectionName("StandWeldComp45");
 		 opini.ReadString("StandWeldLenComp", &dStandWeldLenComp);
 		 opini.ReadString("StandWeldVerComp", &dStandWeldVerComp);
@@ -6428,7 +6480,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.ReadString("StandWeldVerComp", &dStandWeldVerComp);
 		 vnInputData.push_back(dStandWeldLenComp);
 		 vnInputData.push_back(dStandWeldVerComp);
-		 ParamInput cParamDlg("Á¢º¸²¹³¥:º¸Ë¿·½Ïò:³¤¼Ó¶Ì¼õ º¸Ë¿´¹Ö±·½Ïò:Äæ¼ÓË³¼õ", vStrName, &vnInputData);
+		 ParamInput cParamDlg("ç«‹ç„Šè¡¥å¿:ç„Šä¸æ–¹å‘:é•¿åŠ çŸ­å‡ ç„Šä¸å‚ç›´æ–¹å‘:é€†åŠ é¡ºå‡", vStrName, &vnInputData);
 		 cParamDlg.DoModal();
 		 opini.SetSectionName("StandWeldComp45");
 		 opini.WriteString("StandWeldLenComp", vnInputData[0]);
@@ -6443,16 +6495,16 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.WriteString("StandWeldLenComp", vnInputData[6]);
 		 opini.WriteString("StandWeldVerComp", vnInputData[7]);
 	 }
-	 else if (TRUE == XiMessageBox("ÊÇ·ñĞŞ¸ÄÁ¢º¸  0¡ã 90¡ã 180¡ã 270¡ã ·½ÏòÆ«ÒÆÁ¿£¿"))
+	 else if (TRUE == XiMessageBox("æ˜¯å¦ä¿®æ”¹ç«‹ç„Š  0Â° 90Â° 180Â° 270Â° æ–¹å‘åç§»é‡ï¼Ÿ"))
 	 {
-		 vStrName.push_back("Á¢º¸0¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸0¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸90¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸90¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸180¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸180¡ã´¹Ö±:");
-		 vStrName.push_back("Á¢º¸270¡ãË®Æ½:");
-		 vStrName.push_back("Á¢º¸270¡ã´¹Ö±:");
+		 vStrName.push_back("ç«‹ç„Š0Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š0Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š90Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š90Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š180Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š180Â°å‚ç›´:");
+		 vStrName.push_back("ç«‹ç„Š270Â°æ°´å¹³:");
+		 vStrName.push_back("ç«‹ç„Š270Â°å‚ç›´:");
 		 opini.SetSectionName("StandWeldComp0");
 		 opini.ReadString("StandWeldLenComp", &dStandWeldLenComp);
 		 opini.ReadString("StandWeldVerComp", &dStandWeldVerComp);
@@ -6473,7 +6525,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 opini.ReadString("StandWeldVerComp", &dStandWeldVerComp);
 		 vnInputData.push_back(dStandWeldLenComp);
 		 vnInputData.push_back(dStandWeldVerComp);
-		 ParamInput cParamDlg("Á¢º¸²¹³¥:º¸Ë¿·½Ïò:³¤¼Ó¶Ì¼õ º¸Ë¿´¹Ö±·½Ïò:Äæ¼ÓË³¼õ", vStrName, &vnInputData);
+		 ParamInput cParamDlg("ç«‹ç„Šè¡¥å¿:ç„Šä¸æ–¹å‘:é•¿åŠ çŸ­å‡ ç„Šä¸å‚ç›´æ–¹å‘:é€†åŠ é¡ºå‡", vStrName, &vnInputData);
 		 cParamDlg.DoModal();
 		 opini.SetSectionName("StandWeldComp0");
 		 opini.WriteString("StandWeldLenComp", vnInputData[0]);
@@ -6493,7 +6545,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButtonLoadTrack2()
  {
-	 //// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	 //// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 //COPini opini;
 	 //opini.SetFileName(SYSTEM_PARA_INI);
 	 //opini.SetSectionName("TodaysPartNum");
@@ -6503,9 +6555,9 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// opini.ReadString("Ratio", &dRatio);
 	 //}
 
-	 //XiMessageBox("Áª»úÊ±¼ä£º%s\n¶Ï»úÊ±¼ä£º%s\n×ÜÁª»úÊ±¼ä£º%.3lfĞ¡Ê±\n×Ü¶Ï»úÊ±¼ä£º%.3lfĞ¡Ê±\n\n¹¤×÷Ê±¼ä£º%.3lfĞ¡Ê±(%.3lf·ÖÖÓ)\
-		// \n´ı»úÊ±¼ä£º % .3lfĞ¡Ê±(% .3lf·ÖÖÓ)\nÆ½º¸×ÜÓÃÊ±£º%.3lfĞ¡Ê±(%.3lf·ÖÖÓ)\nÁ¢º¸×ÜÓÃÊ±£º%.3lfĞ¡Ê±(%.3lf·ÖÖÓ)\nÉ¨Ãè×ÜÓÃÊ±£º%.3lfĞ¡Ê±(%.3lf·ÖÖÓ)\
-  //       \nÉ¨Ãèº¸½Ó×ÜÓÃÊ±£º%.3lfĞ¡Ê±(%.3lf·ÖÖÓ)\n\nÆ½º¸×Ü³¤¶È£º%.3lfÃ×\nÁ¢º¸×Ü³¤¶È£º%.3lfÃ×\nº¸·ì×Ü³¤¶È£º%.3lfÃ×\n",
+	 //XiMessageBox("è”æœºæ—¶é—´ï¼š%s\næ–­æœºæ—¶é—´ï¼š%s\næ€»è”æœºæ—¶é—´ï¼š%.3lfå°æ—¶\næ€»æ–­æœºæ—¶é—´ï¼š%.3lfå°æ—¶\n\nå·¥ä½œæ—¶é—´ï¼š%.3lfå°æ—¶(%.3lfåˆ†é’Ÿ)\
+		// \nå¾…æœºæ—¶é—´ï¼š % .3lfå°æ—¶(% .3lfåˆ†é’Ÿ)\nå¹³ç„Šæ€»ç”¨æ—¶ï¼š%.3lfå°æ—¶(%.3lfåˆ†é’Ÿ)\nç«‹ç„Šæ€»ç”¨æ—¶ï¼š%.3lfå°æ—¶(%.3lfåˆ†é’Ÿ)\næ‰«ææ€»ç”¨æ—¶ï¼š%.3lfå°æ—¶(%.3lfåˆ†é’Ÿ)\
+  //       \næ‰«æç„Šæ¥æ€»ç”¨æ—¶ï¼š%.3lfå°æ—¶(%.3lfåˆ†é’Ÿ)\n\nå¹³ç„Šæ€»é•¿åº¦ï¼š%.3lfç±³\nç«‹ç„Šæ€»é•¿åº¦ï¼š%.3lfç±³\nç„Šç¼æ€»é•¿åº¦ï¼š%.3lfç±³\n",
 		// m_sFirstOpenTime, m_sLastCloseTime, (double)m_lTotalOpenTime / (3600.0 * 1000), (double)m_lTotalColseTime / (3600.0 * 1000), 
 		// (double)m_lWorkTime / (3600.0 * 1000.0), (double)m_lWorkTime / 1000.0 / 60.0, (double)m_lStandbyTime / (3600.0 * 1000.0), (double)m_lStandbyTime / 1000.0 / 60.0,
 		// (double)m_lFlatWeldTime / (3600.0 * 1000.0), (double)m_lFlatWeldTime / 1000.0 / 60.0, (double)m_lStandWeldTime / (3600.0 * 1000.0), (double)m_lStandWeldTime / 1000.0 / 60.0,
@@ -6527,7 +6579,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 std::map<int, CString>::iterator iter = m_nsPartType.begin();
 	 for (; iter != m_nsPartType.end(); iter++)
 	 {
-		 //ÒÑĞŞ¸Ä
+		 //å·²ä¿®æ”¹
 		 iter->second = XUI::Languge::GetInstance().translate(iter->second.GetBuffer());
 		 if (iter->second == str)
 		 {
@@ -6536,7 +6588,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 }
 	 if (iter == m_nsPartType.end())
 	 {
-		 XiMessageBox("Î´Ñ¡ÔñÕıÈ·¹¤¼ş");
+		 XiMessageBox("æœªé€‰æ‹©æ­£ç¡®å·¥ä»¶");
 		 m_tChoseWorkPieceType = E_LINELLAE;
 	 }
 	 m_tChoseWorkPieceType = (E_WORKPIECE_TYPE)iter->first;
@@ -6544,7 +6596,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 CString s;
 	 s.Format("%d", (int)m_tChoseWorkPieceType);
 	 COPini::WriteString(SYSTEM_PARA_INI, "TotalPartType", "CurChooseType", s);
-	 //ÒÑĞŞ¸Ä
+	 //å·²ä¿®æ”¹
 	 XUI::Languge::GetInstance().translateDialog(this);
  }
 
@@ -6555,13 +6607,13 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 m_vpRobotDriver[i]->m_eThreadStatus = INCISEHEAD_THREAD_STATUS_START;
 	 }
 
-	 WriteLog("CAssemblyWeld: ³õÊ¼»¯±äÁ¿Íê±Ï");
+	 WriteLog("CAssemblyWeld: åˆå§‹åŒ–å˜é‡å®Œæ¯•");
 	 return TRUE;
  }
 
  bool CAssemblyWeld::CleanGunH(CRobotDriverAdaptor* pRobotCtrl)
  {
-	 //Î»ÖÃ¹ıµÍÊ±ÏÈÌ§Ç¹ÔÙ»Øµ½°²È«Î»ÖÃ
+	 //ä½ç½®è¿‡ä½æ—¶å…ˆæŠ¬æªå†å›åˆ°å®‰å…¨ä½ç½®
 	 CUnit* pUnit = m_vpUnit[pRobotCtrl->m_nRobotNo];
 	 BackHome();
 	 CHECK_BOOL_RETURN(pUnit->CheckIsReadyRun());
@@ -6582,22 +6634,22 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		// {
 		//	 if (TRUE == m_bNaturalPop)
 		//	 {
-		//		 XiMessageBox("µ±Ç°Î»ÖÃ¹ıµÍ£¬×Ô¶¯Ì§Ç¹Ê§°Ü£¬ÇëÊÖ¶¯Ì§Ç¹");
+		//		 XiMessageBox("å½“å‰ä½ç½®è¿‡ä½ï¼Œè‡ªåŠ¨æŠ¬æªå¤±è´¥ï¼Œè¯·æ‰‹åŠ¨æŠ¬æª");
 		//	 }
 		//	 return FALSE;
 		// }
 	 //}*/
 	 ////OnBnClickedButtonBackHome();
-	 //pUnit->SwitchIO("CleanGun", false); //¹Ø±ÕÇåÇ¹
+	 //pUnit->SwitchIO("CleanGun", false); //å…³é—­æ¸…æª
 	 //Sleep(50);
-	 //pUnit->SwitchIO("CutSilk", false); //ËÉ¿ª¼ôË¿(¼Ó½ô)
+	 //pUnit->SwitchIO("CutSilk", false); //æ¾å¼€å‰ªä¸(åŠ ç´§)
 	 //Sleep(50);
-	 //pUnit->SwitchIO("FuelInjection", false); //¹Ø±ÕÅçÓÍ
+	 //pUnit->SwitchIO("FuelInjection", false); //å…³é—­å–·æ²¹
 	 //Sleep(50);
 
 	 //T_ROBOT_COORS tCurrentRobotCoors;
-	 //T_ROBOT_COORS tQQCoors;// ÇåÇ¹µã
-	 //T_ROBOT_COORS tJSCoors;// ¼ôË¿µã
+	 //T_ROBOT_COORS tQQCoors;// æ¸…æªç‚¹
+	 //T_ROBOT_COORS tJSCoors;// å‰ªä¸ç‚¹
 
 	 //if (0 == pRobotCtrl->m_nRobotNo)
 	 //{
@@ -6633,10 +6685,10 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //}
 	 //else
 	 //{
-		// XiMessageBox("»úÆ÷ÈËÑ¡ÔñÊ§°Ü£¬Í£Ö¹ÇåÇ¹");
+		// XiMessageBox("æœºå™¨äººé€‰æ‹©å¤±è´¥ï¼Œåœæ­¢æ¸…æª");
 		// return false;
 	 //}
-	 ////T_ROBOT_COORS tPYCoors;// ÅçÓÍµã
+	 ////T_ROBOT_COORS tPYCoors;// å–·æ²¹ç‚¹
 	 ////tPYCoors.dX = -1216.419;
 	 ////tPYCoors.dY = 677.719;
 	 ////tPYCoors.dZ = 1014.599;
@@ -6664,8 +6716,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //opini.SetFileName(DATA_PATH + pUnit->m_tContralUnit.strUnitName + LINE_SCAN_PARAM);
 	 //opini.SetSectionName("Table0");
 
-	 //T_ANGLE_PULSE tCleanInitPlus;//ÇåÇ¹±êÖ¾Î»(¹Ø½Ú)
-	 //T_ROBOT_COORS tCleanInitCoord; //ÇåÇ¹±êÖ¾Î»(Ö±½Ç) 
+	 //T_ANGLE_PULSE tCleanInitPlus;//æ¸…æªæ ‡å¿—ä½(å…³èŠ‚)
+	 //T_ROBOT_COORS tCleanInitCoord; //æ¸…æªæ ‡å¿—ä½(ç›´è§’) 
 	 //opini.ReadString("CleanInitPlus.nSPulse", &tCleanInitPlus.nSPulse);
 	 //opini.ReadString("CleanInitPlus.nLPulse", &tCleanInitPlus.nLPulse);
 	 //opini.ReadString("CleanInitPlus.nUPulse", &tCleanInitPlus.nUPulse);
@@ -6677,12 +6729,12 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 //if (tCurrentRobotCoors.dX == 0 && tCurrentRobotCoors.dY == 0 && tCurrentRobotCoors.dZ == 0)
 	 //{
-		// XiMessageBox("ÇåÇ¹Ô­µãÎ»ÖÃ³ö´í");
+		// XiMessageBox("æ¸…æªåŸç‚¹ä½ç½®å‡ºé”™");
 		// return FALSE;
 	 //}
 	 //if (tCurrentRobotCoors.dX < -5000)
 	 //{
-		// XiMessageBox("ÇåÇ¹Ô­µãÎ»ÖÃ³ö´í");
+		// XiMessageBox("æ¸…æªåŸç‚¹ä½ç½®å‡ºé”™");
 		// return FALSE;
 	 //}
 
@@ -6692,7 +6744,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //bool Transresult = pRobotCtrl->RobotInverseKinematics(tCurrentRobotCoors, tCleanInitPlus, pRobotCtrl->m_tFirstTool, tResultPulse);
 	 //if (Transresult == FALSE)
 	 //{
-		// XiMessageBox("»úÆ÷ÈËÎŞ·¨µ½´ïÇåÇ¹Î»ÖÃ");
+		// XiMessageBox("æœºå™¨äººæ— æ³•åˆ°è¾¾æ¸…æªä½ç½®");
 		// return FALSE;
 	 //}
 
@@ -6718,14 +6770,14 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //bool Transresult2 = pRobotCtrl->RobotInverseKinematics(tCurrentRobotCoors, tCleanInitPlus, pRobotCtrl->m_tFirstTool, tResultPulse);
 	 //if (Transresult2 == FALSE)
 	 //{
-		// XiMessageBox("»úÆ÷ÈËÎŞ·¨µ½´ïÇåÇ¹Î»ÖÃ");
+		// XiMessageBox("æœºå™¨äººæ— æ³•åˆ°è¾¾æ¸…æªä½ç½®");
 		// return FALSE;
 	 //}
 	 //tRobotMoveInfo = pRobotCtrl->PVarToRobotMoveInfo(0, tResultPulse, tPulseMove2, MOVJ);
 	 //vtRobotMoveInfo.push_back(tRobotMoveInfo);
 
-	 //// ¼ÆËãÇåÇ¹¹ı¶Éµã
-	 //T_ROBOT_COORS tCalQQCoors;// ¼ÆËãÇåÇ¹ÖĞ¼äµã
+	 //// è®¡ç®—æ¸…æªè¿‡æ¸¡ç‚¹
+	 //T_ROBOT_COORS tCalQQCoors;// è®¡ç®—æ¸…æªä¸­é—´ç‚¹
 	 //tCalQQCoors = tQQCoors;
 	 //tCalQQCoors.dY += 150;
 	 //tCalQQCoors.dX -= 5;
@@ -6743,23 +6795,23 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //pRobotCtrl->CallJob("CONTIMOVANY");
 	 //pUnit->RobotCheckDone();
 	 //vtRobotMoveInfo.clear();
-	 ////XiMessageBox("¼ì²éÊÇ·ñÔÚÇåÇ¹µãĞ±ÉÏ·½£¨µ÷ÊÔÍêµ¯¿òÉ¾³ı£©");
-	 //pUnit->SwitchIO("CleanGun", true); //¿ªÆôÇåÇ¹
+	 ////XiMessageBox("æ£€æŸ¥æ˜¯å¦åœ¨æ¸…æªç‚¹æ–œä¸Šæ–¹ï¼ˆè°ƒè¯•å®Œå¼¹æ¡†åˆ é™¤ï¼‰");
+	 //pUnit->SwitchIO("CleanGun", true); //å¼€å¯æ¸…æª
 	 //Sleep(2000);
-	 //pUnit->SwitchIO("CleanGun", false); //¹Ø±ÕÇåÇ¹
+	 //pUnit->SwitchIO("CleanGun", false); //å…³é—­æ¸…æª
 	 //Sleep(1000);
 
-	 //pUnit->SwitchIO("FuelInjection", true); //¿ªÆôÅçÓÍ
+	 //pUnit->SwitchIO("FuelInjection", true); //å¼€å¯å–·æ²¹
 	 //Sleep(2000);
-	 //pUnit->SwitchIO("FuelInjection", false); //¹Ø±ÕÅçÓÍ
+	 //pUnit->SwitchIO("FuelInjection", false); //å…³é—­å–·æ²¹
 	 //Sleep(100);
-	 //// ÇåÍê»ØÇåÇ¹ÖĞ¼äµã
+	 //// æ¸…å®Œå›æ¸…æªä¸­é—´ç‚¹
 	 //tCalQQCoors.dY += 150;
 	 //tRobotMoveInfo = pRobotCtrl->PVarToRobotMoveInfo(0, tCalQQCoors, tPulseMove2, MOVL);
 	 //vtRobotMoveInfo.push_back(tRobotMoveInfo);
 
 
-	 //T_ROBOT_COORS tCalJSCoors;// ¼ÆËã¼ôË¿ÖĞ¼äµã
+	 //T_ROBOT_COORS tCalJSCoors;// è®¡ç®—å‰ªä¸ä¸­é—´ç‚¹
 	 //tCalJSCoors = tJSCoors;
 	 //tCalJSCoors.dY += 150;
 	 ////tCalJSCoors.dZ -= 150;
@@ -6768,7 +6820,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //vtRobotMoveInfo.push_back(tRobotMoveInfo);
 
 
-	 //// ¼ôË¿Æ«30 ´Ó²àÃæ½øÈ¥
+	 //// å‰ªä¸å30 ä»ä¾§é¢è¿›å»
 	 //tJSCoors.dZ += 30;
 	 //tRobotMoveInfo = pRobotCtrl->PVarToRobotMoveInfo(2, tJSCoors, tPulseMove, MOVL);
 	 //vtRobotMoveInfo.push_back(tRobotMoveInfo);
@@ -6779,7 +6831,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //pRobotCtrl->CallJob("SS");
 	 //Sleep(500);
 
-	 //// ¼ôË¿µã
+	 //// å‰ªä¸ç‚¹
 	 //tJSCoors.dZ -= 30;
 	 //tRobotMoveInfo = pRobotCtrl->PVarToRobotMoveInfo(0, tJSCoors, tPulseMove2, MOVL);
 	 //vtRobotMoveInfo.push_back(tRobotMoveInfo);
@@ -6789,9 +6841,9 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //vtRobotMoveInfo.clear();
 
 	 //
-	 //pUnit->SwitchIO("CutSilk", true); //¼ôË¿(¼Ğ½ô)
+	 //pUnit->SwitchIO("CutSilk", true); //å‰ªä¸(å¤¹ç´§)
 	 //Sleep(500);
-	 //pUnit->SwitchIO("CutSilk", false); //ËÉ¿ª¼ôË¿
+	 //pUnit->SwitchIO("CutSilk", false); //æ¾å¼€å‰ªä¸
 	 //Sleep(100);
 
 	 ///*tCalJSCoors.dY -= 30*/;
@@ -6802,7 +6854,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 //pUnit->RobotCheckDone();
 	 //vtRobotMoveInfo.clear();
 
-	 //// »Ø×î¿ªÊ¼Î»ÖÃ
+	 //// å›æœ€å¼€å§‹ä½ç½®
 	 //pRobotCtrl->MoveToAbsPluse(oldadplus, 1000);
 	 //pUnit->RobotCheckDone();
 
@@ -6814,7 +6866,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  //bool CAssemblyWeld::CleanGunH(CRobotDriverAdaptor* pRobotCtrl)
  //{
-	// //Î»ÖÃ¹ıµÍÊ±ÏÈÌ§Ç¹ÔÙ»Øµ½°²È«Î»ÖÃ
+	// //ä½ç½®è¿‡ä½æ—¶å…ˆæŠ¬æªå†å›åˆ°å®‰å…¨ä½ç½®
 	// CUnit* pUnit = m_vpUnit[pRobotCtrl->m_nRobotNo];
 	// CHECK_BOOL_RETURN(pUnit->CheckIsReadyRun());
 	// double NowZ = pRobotCtrl->GetCurrentPos(ROBOT_AXIS_Z);
@@ -6828,7 +6880,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	//	// {
 	//	//	 if (TRUE == m_bNaturalPop)
 	//	//	 {
-	//	//		 XiMessageBox("µ±Ç°Î»ÖÃ¹ıµÍ£¬×Ô¶¯Ì§Ç¹Ê§°Ü£¬ÇëÊÖ¶¯Ì§Ç¹");
+	//	//		 XiMessageBox("å½“å‰ä½ç½®è¿‡ä½ï¼Œè‡ªåŠ¨æŠ¬æªå¤±è´¥ï¼Œè¯·æ‰‹åŠ¨æŠ¬æª");
 	//	//	 }
 	//	//	 return FALSE;
 	//	// }
@@ -6842,8 +6894,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	// opini.SetFileName("./data/RobotAndCar.ini");
 	// opini.SetSectionName("ClearGunParam");
 
-	// T_ANGLE_PULSE tCleanInitPlus;//ÇåÇ¹±êÖ¾Î»(¹Ø½Ú)
-	// T_ROBOT_COORS tCleanInitCoord; //ÇåÇ¹±êÖ¾Î»(Ö±½Ç) 
+	// T_ANGLE_PULSE tCleanInitPlus;//æ¸…æªæ ‡å¿—ä½(å…³èŠ‚)
+	// T_ROBOT_COORS tCleanInitCoord; //æ¸…æªæ ‡å¿—ä½(ç›´è§’) 
 	// opini.ReadString("CleanInitPlus.nSPulse", &tCleanInitPlus.nSPulse);
 	// opini.ReadString("CleanInitPlus.nLPulse", &tCleanInitPlus.nLPulse);
 	// opini.ReadString("CleanInitPlus.nUPulse", &tCleanInitPlus.nUPulse);
@@ -6852,8 +6904,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	// opini.ReadString("CleanInitPlus.nTPulse", &tCleanInitPlus.nTPulse);
 	// pRobotCtrl->RobotKinematics(tCleanInitPlus, pRobotCtrl->m_tTools.tGunTool, tCleanInitCoord);
 
-	// T_ROBOT_COORS tClearShifting;   //ÇåÇ¹Æ«ÒÆ¾àÀë
-	// T_ROBOT_COORS tCutSilkShifting; //¼ôË¿Æ«ÒÆ¾àÀë
+	// T_ROBOT_COORS tClearShifting;   //æ¸…æªåç§»è·ç¦»
+	// T_ROBOT_COORS tCutSilkShifting; //å‰ªä¸åç§»è·ç¦»
 	// opini.ReadString("ClearShifting.dX", &tClearShifting.dX);
 	// opini.ReadString("ClearShifting.dY", &tClearShifting.dY);
 	// opini.ReadString("ClearShifting.dZ", &tClearShifting.dZ);
@@ -6861,44 +6913,44 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	// opini.ReadString("CutSilkShifting.dY", &tCutSilkShifting.dY);
 	// opini.ReadString("CutSilkShifting.dZ", &tCutSilkShifting.dZ);
 
-	// double realCleanerAngle;		//ÇåÇ¹Æ÷Êµ¼Ê°²×°½Ç¶È
+	// double realCleanerAngle;		//æ¸…æªå™¨å®é™…å®‰è£…è§’åº¦
 	// opini.ReadString("RealCleanerAngle", &realCleanerAngle);
 
-	// //ÇåÇ¹µã
+	// //æ¸…æªç‚¹
 	// T_ROBOT_COORS tClearGunPoint(tCleanInitCoord);
 	// tClearGunPoint.dX = tClearGunPoint.dX + tClearShifting.dX;
 	// tClearGunPoint.dY = tClearGunPoint.dY + tClearShifting.dY * SinD(realCleanerAngle) * pRobotCtrl->m_nRobotInstallDir;
 	// tClearGunPoint.dZ = tClearGunPoint.dZ + tClearShifting.dZ * pRobotCtrl->m_nRobotInstallDir;
 
-	// //¼ôË¿µã
+	// //å‰ªä¸ç‚¹
 	// T_ROBOT_COORS tCutSilkPoint(tCleanInitCoord);
 	// tCutSilkPoint.dX = tCutSilkPoint.dX + tCutSilkShifting.dX;
 	// tCutSilkPoint.dY = tCutSilkPoint.dY + tCutSilkShifting.dY * SinD(realCleanerAngle) * pRobotCtrl->m_nRobotInstallDir;
 	// tCutSilkPoint.dZ = tCutSilkPoint.dZ + tCutSilkShifting.dZ * pRobotCtrl->m_nRobotInstallDir;
 
-	// //ÇåÇ¹¹ı¶Éµã(ÏÂ)
+	// //æ¸…æªè¿‡æ¸¡ç‚¹(ä¸‹)
 	// T_ROBOT_COORS tClearGunExcessivePointBefor(tClearGunPoint);
 	// tClearGunExcessivePointBefor.dX -= 4.0;
 
-	// //ÇåÇ¹¹ı¶Éµã(ÉÏ)
+	// //æ¸…æªè¿‡æ¸¡ç‚¹(ä¸Š)
 	// T_ROBOT_COORS tClearGunExcessivePoint(tClearGunExcessivePointBefor);
 	// tClearGunExcessivePoint.dZ += 100;
 
-	// //¼ôË¿¹ı¶Éµã
+	// //å‰ªä¸è¿‡æ¸¡ç‚¹
 	// T_ROBOT_COORS tCutSilkExcssivePoint(tCutSilkPoint);
 	// tCutSilkExcssivePoint.dZ += 100;
 
-	// //ÇåÇ¹¹ı¶Éµã(ÉÏ)
+	// //æ¸…æªè¿‡æ¸¡ç‚¹(ä¸Š)
 	// vtRobotCoor.push_back(tClearGunExcessivePoint);
-	// //ÇåÇ¹¹ı¶Éµã(ÏÂ)
+	// //æ¸…æªè¿‡æ¸¡ç‚¹(ä¸‹)
 	// vtRobotCoor.push_back(tClearGunExcessivePointBefor);
-	// //ÇåÇ¹µã
+	// //æ¸…æªç‚¹
 	// vtRobotCoor.push_back(tClearGunPoint);
-	// //¼ôË¿¹ı¶Éµã
+	// //å‰ªä¸è¿‡æ¸¡ç‚¹
 	// vtRobotCoor.push_back(tCutSilkExcssivePoint);
-	// //¼ôË¿µã
+	// //å‰ªä¸ç‚¹
 	// vtRobotCoor.push_back(tCutSilkPoint);
-	// //°²È«Î»ÖÃ
+	// //å®‰å…¨ä½ç½®
 	// tUsrVarInfo = pRobotCtrl->PrepareValData(0, pRobotCtrl->m_tHomePulse);
 	// vtUsrVarInfo.push_back(tUsrVarInfo);
 	// for (int i = 0; i < 5; i++)
@@ -6919,14 +6971,14 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  bool CAssemblyWeld::CleanGun(CRobotDriverAdaptor* pRobotCtrl)
  {
 	 int config[7] = { 0,0,0,0,0,0,0 };
-	 // XiMessageBox("¼ì²é»úÆ÷ÈËÊÇ·ñÔÚ°²È«Î»ÖÃ£¨µ÷ÊÔÍêµ¯¿òÉ¾³ı£©");
+	 // XiMessageBox("æ£€æŸ¥æœºå™¨äººæ˜¯å¦åœ¨å®‰å…¨ä½ç½®ï¼ˆè°ƒè¯•å®Œå¼¹æ¡†åˆ é™¤ï¼‰");
 	 CUnit* pUnit = m_vpUnit[pRobotCtrl->m_nRobotNo];
 	 COPini opini;
 	 opini.SetFileName(DATA_PATH + pUnit->m_tContralUnit.strUnitName + Clean_Gun);
-	 T_ANGLE_PULSE tCleanGunPlus;//ÇåÇ¹±êÖ¾Î»(¹Ø½Ú)
-	 T_ROBOT_COORS tCleanGunCoord; //ÇåÇ¹±êÖ¾Î»(Ö±½Ç) 
-	 T_ROBOT_COORS tCutSilkCoord;//¼ôË¿
-	 T_ROBOT_COORS tSprayOilCoord;//ÅçÓÍ
+	 T_ANGLE_PULSE tCleanGunPlus;//æ¸…æªæ ‡å¿—ä½(å…³èŠ‚)
+	 T_ROBOT_COORS tCleanGunCoord; //æ¸…æªæ ‡å¿—ä½(ç›´è§’) 
+	 T_ROBOT_COORS tCutSilkCoord;//å‰ªä¸
+	 T_ROBOT_COORS tSprayOilCoord;//å–·æ²¹
 	 T_ANGLE_PULSE Pulse = pRobotCtrl->GetCurrentPulse();
 	 T_ROBOT_COORS Pos = pRobotCtrl->GetCurrentPos();
 	 tCleanGunCoord = Pos;
@@ -6939,7 +6991,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 opini.ReadString("CleanGun.RX", &tCleanGunCoord.dRX);
 	 opini.ReadString("CleanGun.RY", &tCleanGunCoord.dRY);
 	 opini.ReadString("CleanGun.RZ", &tCleanGunCoord.dRZ);
-	 T_ROBOT_COORS tCleanGunGDCoord(tCleanGunCoord);//ÇåÇ¹¹ı¶Éµã
+	 T_ROBOT_COORS tCleanGunGDCoord(tCleanGunCoord);//æ¸…æªè¿‡æ¸¡ç‚¹
 	 tCleanGunGDCoord.dZ += 120 * pUnit->GetRobotCtrl()->m_nRobotInstallDir;
 	 opini.SetSectionName("CutSilk");
 	 opini.ReadString("CutSilk.X", &tCutSilkCoord.dX);
@@ -6948,7 +7000,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 opini.ReadString("CutSilk.RX", &tCutSilkCoord.dRX);
 	 opini.ReadString("CutSilk.RY", &tCutSilkCoord.dRY);
 	 opini.ReadString("CutSilk.RZ", &tCutSilkCoord.dRZ);
-	 T_ROBOT_COORS tCutSilkGDCoord(tCutSilkCoord);//¼ôË¿¹ı¶Éµã
+	 T_ROBOT_COORS tCutSilkGDCoord(tCutSilkCoord);//å‰ªä¸è¿‡æ¸¡ç‚¹
 	 tCutSilkGDCoord.dX += 30 * pUnit->GetRobotCtrl()->m_nRobotInstallDir;
 	 tCutSilkGDCoord.dZ += 120 * pUnit->GetRobotCtrl()->m_nRobotInstallDir;
 	 opini.SetSectionName("SprayOil");
@@ -6958,7 +7010,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 opini.ReadString("SprayOil.RX", &tSprayOilCoord.dRX);
 	 opini.ReadString("SprayOil.RY", &tSprayOilCoord.dRY);
 	 opini.ReadString("SprayOil.RZ", &tSprayOilCoord.dRZ);
-	 T_ROBOT_COORS tSprayOilGDCoord(tSprayOilCoord);//ÅçÓÍ¹ı¶Éµã
+	 T_ROBOT_COORS tSprayOilGDCoord(tSprayOilCoord);//å–·æ²¹è¿‡æ¸¡ç‚¹
 	 tSprayOilGDCoord.dZ += 120 * pUnit->GetRobotCtrl()->m_nRobotInstallDir;
 	 opini.SetSectionName("ClearGunParam");
 	 opini.ReadString("CleanInitPlus.nSPulse", &tCleanGunPlus.nSPulse);
@@ -6989,40 +7041,40 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 tCleanGunPlus.lBXPulse = Pulse.lBXPulse;
 	 tCleanGunPlus.lBYPulse = Pulse.lBYPulse;
 	 tCleanGunPlus.lBZPulse = Pulse.lBZPulse;
-	 pRobotCtrl->MoveByJob(tCleanGunPlus, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVJ"); //»ØÇåÇ¹¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tCleanGunPlus, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVJ"); //å›æ¸…æªè¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
-	 pRobotCtrl->MoveByJob(tCleanGunCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»ØÇåÇ¹µã
+	 pRobotCtrl->MoveByJob(tCleanGunCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›æ¸…æªç‚¹
 	 pUnit->RobotCheckDone(2000);
 	 pUnit->SwitchIO("CleanGun", true); 
 	 Sleep(2000);
 	 pUnit->SwitchIO("CleanGun", false);
 	 Sleep(200);
-	 pRobotCtrl->MoveByJob(tCleanGunGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»ØÇåÇ¹¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tCleanGunGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›æ¸…æªè¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
 
-	 pRobotCtrl->MoveByJob(tCutSilkGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»Ø¼ôË¿¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tCutSilkGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›å‰ªä¸è¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
-	 pRobotCtrl->MoveByJob(tCutSilkCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»Ø¼ôË¿µã
+	 pRobotCtrl->MoveByJob(tCutSilkCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›å‰ªä¸ç‚¹
 	 pUnit->RobotCheckDone(2000);
 	 pRobotCtrl->CallJob("CS");
 	 pUnit->RobotCheckDone(2000);
-	 pUnit->SwitchIO("CutSilk", true); //¼ôË¿(ËÉ¿ª)
+	 pUnit->SwitchIO("CutSilk", true); //å‰ªä¸(æ¾å¼€)
 	 Sleep(1000);
-	 pUnit->SwitchIO("CutSilk", false); //ËÉ¿ª¼ôË¿(¼Ó½ô)
+	 pUnit->SwitchIO("CutSilk", false); //æ¾å¼€å‰ªä¸(åŠ ç´§)
 	 Sleep(200);
-	 pRobotCtrl->MoveByJob(tCutSilkGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»Ø¼ôË¿¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tCutSilkGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›å‰ªä¸è¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
-	 pRobotCtrl->MoveByJob(tSprayOilGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»ØÅçÓÍ¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tSprayOilGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›å–·æ²¹è¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
-	 pRobotCtrl->MoveByJob(tSprayOilCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //»ØÅçÓÍµã
+	 pRobotCtrl->MoveByJob(tSprayOilCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config); //å›å–·æ²¹ç‚¹
 	 pUnit->RobotCheckDone(2000);
 	 pUnit->SwitchIO("FuelInjection", true);
 	 Sleep(2000);
 	 pUnit->SwitchIO("FuelInjection", false); 
 	 Sleep(200);
-	 pRobotCtrl->MoveByJob(tSprayOilGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config);  //»ØÅçÓÍ¹ı¶Éµã
+	 pRobotCtrl->MoveByJob(tSprayOilGDCoord, tPulseMove, pRobotCtrl->m_nExternalAxleType, "MOVL", config);  //å›å–·æ²¹è¿‡æ¸¡ç‚¹
 	 pUnit->RobotCheckDone(2000);
-	 pRobotCtrl->MoveByJob(pRobotCtrl->m_tHomePulse, pRobotCtrl->m_tBackHomeSpeed, pRobotCtrl->m_nExternalAxleType, "MOVJ");//»Ø°²È«Î»ÖÃ
+	 pRobotCtrl->MoveByJob(pRobotCtrl->m_tHomePulse, pRobotCtrl->m_tBackHomeSpeed, pRobotCtrl->m_nExternalAxleType, "MOVJ");//å›å®‰å…¨ä½ç½®
 	 pUnit->RobotCheckDone(2000);
 
 	 return 1;
@@ -7031,8 +7083,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  vector<string> CAssemblyWeld::split(const string& str, const string& delim) {
 	 vector<string> res;
 	 if ("" == str) return res;
-	 //ÏÈ½«ÒªÇĞ¸îµÄ×Ö·û´®´ÓstringÀàĞÍ×ª»»Îªchar*ÀàĞÍ  
-	 char* strs = new char[str.length() + 1]; //²»ÒªÍüÁË  
+	 //å…ˆå°†è¦åˆ‡å‰²çš„å­—ç¬¦ä¸²ä»stringç±»å‹è½¬æ¢ä¸ºchar*ç±»å‹  
+	 char* strs = new char[str.length() + 1]; //ä¸è¦å¿˜äº†  
 	 strcpy(strs, str.c_str());
 
 	 char* d = new char[delim.length() + 1];
@@ -7040,48 +7092,48 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 char* p = strtok(strs, d);
 	 while (p) {
-		 string s = p; //·Ö¸îµÃµ½µÄ×Ö·û´®×ª»»ÎªstringÀàĞÍ  
-		 res.push_back(s); //´æÈë½á¹ûÊı×é  
+		 string s = p; //åˆ†å‰²å¾—åˆ°çš„å­—ç¬¦ä¸²è½¬æ¢ä¸ºstringç±»å‹  
+		 res.push_back(s); //å­˜å…¥ç»“æœæ•°ç»„  
 		 p = strtok(NULL, d);
 	 }
 
 	 return res;
  }
  /**
-  * @brief Ã¶¾Ù¶ÔÓ¦×éºÅµÄº¸·ì£¬¸ù¾İ¶ÔÓ¦º¸·ìµÄbWeldModeÅĞ¶ÏÊÇ·ñĞèÒª¸ú×Ùº¸½Ó£¬²»ĞèÒªÔòÊ¹ÓÃÀíÂÛÖ±½Óº¸½Ó£¬ĞèÒªÔò×ß¸ú×Ùº¸½ÓÁ÷³Ì
-  * @param pWeldData ´æ´¢º¸½ÓÊı¾İµÄ½á¹¹Ìå(Àà)
-  * @param nGroupNo º¸½Ó×éºÅ
-  * @return ¶ÔÓ¦×éÊÇ·ñº¸½Ó³É¹¦
+  * @brief æšä¸¾å¯¹åº”ç»„å·çš„ç„Šç¼ï¼Œæ ¹æ®å¯¹åº”ç„Šç¼çš„bWeldModeåˆ¤æ–­æ˜¯å¦éœ€è¦è·Ÿè¸ªç„Šæ¥ï¼Œä¸éœ€è¦åˆ™ä½¿ç”¨ç†è®ºç›´æ¥ç„Šæ¥ï¼Œéœ€è¦åˆ™èµ°è·Ÿè¸ªç„Šæ¥æµç¨‹
+  * @param pWeldData å­˜å‚¨ç„Šæ¥æ•°æ®çš„ç»“æ„ä½“(ç±»)
+  * @param nGroupNo ç„Šæ¥ç»„å·
+  * @return å¯¹åº”ç»„æ˜¯å¦ç„Šæ¥æˆåŠŸ
  */
  bool CAssemblyWeld::WeldSchedule(WeldAfterMeasure* pWeldData, int nGroupNo)
  {
-	 //******************************³õÊ¼»¯¸ú×Ù¶ÔÏó
+	 //******************************åˆå§‹åŒ–è·Ÿè¸ªå¯¹è±¡
 	 CDiaphragmWeld tTraceWeldObj(pWeldData->m_ptUnit, E_EMPTY_ERROR);
 	 tTraceWeldObj.SetHardware(pWeldData->m_pScanInit);
 	 tTraceWeldObj.SetWeldParam(pWeldData->m_pIsArcOn, pWeldData->m_pIsNaturalPop, pWeldData->m_pIsTeachPop, pWeldData->m_bNeedWrap);
 	 tTraceWeldObj.m_pColorImg = pWeldData->m_pColorImg;
 	 tTraceWeldObj.m_bIsLocalDebug = pWeldData->m_bIsLocalDebug;
-	 //³õÊ¼»¯¹¤ÒÕ²ÎÊı
+	 //åˆå§‹åŒ–å·¥è‰ºå‚æ•°
 	 tTraceWeldObj.InitWeldStartVal(pWeldData->m_pRobotDriver);
 	 pWeldData->m_pScanInit->m_pTraceModel->m_eStartWrapAngleType;
-	 int nSingleBoard = pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.nStartWrapType;// 4Îª²»ËÑÆğÖÕµÄÒ»´Î°ü½Ç		
-	 // ÌøÇ¹²¹¶¡
+	 int nSingleBoard = pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][0].tAtrribute.nStartWrapType;// 4ä¸ºä¸æœèµ·ç»ˆçš„ä¸€æ¬¡åŒ…è§’		
+	 // è·³æªè¡¥ä¸
 	 if (pWeldData->m_pScanInit->m_pTraceModel->m_vtRealEndpointCoor.size() > 0)
 	 {
 		 pWeldData->m_pScanInit->m_pTraceModel->m_eStartWrapAngleType = E_WRAPANGLE_JUMP;
 	 }
 	 
-	 //													copyÀ´µÄ´úÂë¡ı
+	 //													copyæ¥çš„ä»£ç â†“
 	 //tTraceWeldObj.m_pRobotDriver->m_tRobotLimitation = m_vpLaserLineScreen[tTraceWeldObj.m_pRobotDriver->m_nRobotNo]->m_tRobotLimitation;
-	 tTraceWeldObj.m_dSafePosRunSpeed = 3000;				//°²È«Î»ÖÃÒÆ¶¯ËÙ¶È£¬¿ìËÙ
-	 tTraceWeldObj.m_dFastApproachToWorkSpeed = 2000;		//¿ìËÙ¿¿½ü¹¤¼ş£¬ ÖĞËÙ
-	 tTraceWeldObj.m_dSafeApproachToWorkSpeed = 1000;		//°²È«ÒÆ¶¯µ½¹¤¼şËÙ¶È£¬ÂıËÙ
-	 //******************************³õÊ¼»¯¸ú×Ù¶ÔÏó
+	 tTraceWeldObj.m_dSafePosRunSpeed = 3000;				//å®‰å…¨ä½ç½®ç§»åŠ¨é€Ÿåº¦ï¼Œå¿«é€Ÿ
+	 tTraceWeldObj.m_dFastApproachToWorkSpeed = 2000;		//å¿«é€Ÿé è¿‘å·¥ä»¶ï¼Œ ä¸­é€Ÿ
+	 tTraceWeldObj.m_dSafeApproachToWorkSpeed = 1000;		//å®‰å…¨ç§»åŠ¨åˆ°å·¥ä»¶é€Ÿåº¦ï¼Œæ…¢é€Ÿ
+	 //******************************åˆå§‹åŒ–è·Ÿè¸ªå¯¹è±¡
 
-	 // Çå³ıÓÃÓÚÉú³ÉÍêÕûº¸½ÓJob µÄ»º³åÇø
+	 // æ¸…é™¤ç”¨äºç”Ÿæˆå®Œæ•´ç„Šæ¥Job çš„ç¼“å†²åŒº
 	 pWeldData->CleaeJobBuffer(); 
 
-	 //jwq ÁÙÊ±£¬ÅĞ¶ÏÊÇ·ñÊÇ±ÕºÏÔ²»¡
+	 //jwq ä¸´æ—¶ï¼Œåˆ¤æ–­æ˜¯å¦æ˜¯é—­åˆåœ†å¼§
 	 double dDis = TwoPointDis(pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo][0].StartPoint.x,
 		 pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo][0].StartPoint.y,
 		 pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo][0].StartPoint.z,
@@ -7089,7 +7141,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo][0].EndPoint.y,
 		 pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo][0].EndPoint.z);
 
-	 // jwq»ÆÆÒ²âÊÔ£¬ÁÙÊ±Ê¹ÓÃ
+	 // jwqé»„åŸ”æµ‹è¯•ï¼Œä¸´æ—¶ä½¿ç”¨
 	 if (false && pWeldData->m_bWorkpieceShape && dDis > 1.0)
 	 {
 		 if (1 == pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo].size())
@@ -7102,27 +7154,27 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 
 		 }
 	 }
-	 //¶ÔÓ¦×éº¸·ìĞÅÏ¢	£¨ÏÂÃæÁ÷³Ì»á½«¸Ã×éµÄÁ¢º¸£¨Èç¹û´æÔÚ£©ÌáÈ¡³öÀ´ÏÈº¸½Ó£©
+	 //å¯¹åº”ç»„ç„Šç¼ä¿¡æ¯	ï¼ˆä¸‹é¢æµç¨‹ä¼šå°†è¯¥ç»„çš„ç«‹ç„Šï¼ˆå¦‚æœå­˜åœ¨ï¼‰æå–å‡ºæ¥å…ˆç„Šæ¥ï¼‰
 	 vector<LineOrCircularArcWeldingLine>& vtWeldSeam = pWeldData->m_vvtWeldSeamGroupAdjust[nGroupNo];
-	 //vtWeldSeamÖĞ´æ·ÅÁ¢º¸µÄ±àºÅµÄ¼¯ºÏ
+	 //vtWeldSeamä¸­å­˜æ”¾ç«‹ç„Šçš„ç¼–å·çš„é›†åˆ
 	 vector<int> vnStandWeldNoIdx(0);
-	 //vtWeldSeamÖĞ´æ·ÅÆ½º¸µÄ±àºÅµÄ¼¯ºÏ
+	 //vtWeldSeamä¸­å­˜æ”¾å¹³ç„Šçš„ç¼–å·çš„é›†åˆ
 	 vector<int> vnFlatWeldNoIdx(0);
-	 //º¸·ì±àºÅ¼¯ºÏ
+	 //ç„Šç¼ç¼–å·é›†åˆ
 	 vector<int> vnWeldOrder(0);
-	 //¼ÇÂ¼º¸½ÓµÄÆ½º¸ĞòºÅ 1,2,3,4....¡ü
+	 //è®°å½•ç„Šæ¥çš„å¹³ç„Šåºå· 1,2,3,4....â†‘
 	 int nFlatWeldNo = 0;
-	 //¼ÇÂ¼º¸½ÓµÄÁ¢º¸ĞòºÅ 1,2,3,4....¡ü
+	 //è®°å½•ç„Šæ¥çš„ç«‹ç„Šåºå· 1,2,3,4....â†‘
 	 int nStandWeldNo = 0;
 	 
-	 //********************************************************* ĞŞ¸Äº¸½ÓÁ÷³ÌÎªÏÈº¸½ÓnGroupNo×éº¸·ìµÄÁ¢º¸
+	 //********************************************************* ä¿®æ”¹ç„Šæ¥æµç¨‹ä¸ºå…ˆç„Šæ¥nGroupNoç»„ç„Šç¼çš„ç«‹ç„Š
 	 for (int i = 0; i < vtWeldSeam.size(); i++)
 	 {
-		 //È¡º¸·ìÀàĞÍ
+		 //å–ç„Šç¼ç±»å‹
 		 E_WELD_SEAM_TYPE eWeldSeamType = pWeldData->GetWeldSeamType(vtWeldSeam[i]);
 		 /*
-			Á¢º¸ÔÚvtWeldSeamÖĞµÄ±àºÅ·ÅÈëvnStandWeldNoIdx£¬
-			Æ½º¸ÔÚvtWeldSeamÖĞµÄ±àºÅ·ÅÈëvnFlatWeldNoIdx
+			ç«‹ç„Šåœ¨vtWeldSeamä¸­çš„ç¼–å·æ”¾å…¥vnStandWeldNoIdxï¼Œ
+			å¹³ç„Šåœ¨vtWeldSeamä¸­çš„ç¼–å·æ”¾å…¥vnFlatWeldNoIdx
 		 */
 		 if (E_FLAT_SEAM == eWeldSeamType)
 		 {
@@ -7133,39 +7185,39 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 vnStandWeldNoIdx.push_back(i);
 		 }
 	 }
-	 //½«ËùÓĞÁ¢º¸±àºÅ·ÅÈëvnWeldOrderÖĞ
+	 //å°†æ‰€æœ‰ç«‹ç„Šç¼–å·æ”¾å…¥vnWeldOrderä¸­
 	 vnWeldOrder.insert(vnWeldOrder.end(), vnStandWeldNoIdx.begin(), vnStandWeldNoIdx.end());
-	 //½«ËùÓĞÆ½º¸±àºÅ·ÅÈëvnWeldOrderÖĞ£¨ÔÚÈİÆ÷µÄÄ©Î²²åÈëÒâÎ¶×ÅÆ½º¸±àºÅ´æ´¢ÔÚÈİÆ÷ÖĞÁ¢º¸±àºÅÖ®ºó£©
+	 //å°†æ‰€æœ‰å¹³ç„Šç¼–å·æ”¾å…¥vnWeldOrderä¸­ï¼ˆåœ¨å®¹å™¨çš„æœ«å°¾æ’å…¥æ„å‘³ç€å¹³ç„Šç¼–å·å­˜å‚¨åœ¨å®¹å™¨ä¸­ç«‹ç„Šç¼–å·ä¹‹åï¼‰
 	 vnWeldOrder.insert(vnWeldOrder.end(), vnFlatWeldNoIdx.begin(), vnFlatWeldNoIdx.end());
-	 //********************************************************* ĞŞ¸Äº¸½ÓÁ÷³ÌÎªÏÈº¸½ÓnGroupNo×éº¸·ìµÄÁ¢º¸
+	 //********************************************************* ä¿®æ”¹ç„Šæ¥æµç¨‹ä¸ºå…ˆç„Šæ¥nGroupNoç»„ç„Šç¼çš„ç«‹ç„Š
 
-	 //±éÀú¸Ã×éµÄËùÓĞº¸·ì£¨Ò»×éº¸·ì²»»á³¬¹ı8¸öº¸µÀ£©
+	 //éå†è¯¥ç»„çš„æ‰€æœ‰ç„Šç¼ï¼ˆä¸€ç»„ç„Šç¼ä¸ä¼šè¶…è¿‡8ä¸ªç„Šé“ï¼‰
 	 for (int i = pWeldData->m_nPauseWeldNo; i < 8; i++) {
 		 if (i >= vnWeldOrder.size()) {
 			 break;
 		 }
-		 E_WELD_SEAM_TYPE eWeldSeamType;					//º¸·ìÀàĞÍ
-		 vector<T_ROBOT_COORS> vtRealWeldCoord;				//º¸½Ó¹ì¼£×ø±ê
-		 vector<T_ROBOT_COORS> vtAdjustRealWeldCoord;		//º¸½Ó¹ì¼£×ø±ê£¨Ìí¼Ó¹ı²¹³¥Á¿ºó£©
-		 vector<int> vnPtnType;								//º¸½Ó¹ì¼£µãÀàĞÍ
-		 double dExAxlePos;									//º¸½ÓÊ±Íâ²¿ÖáÎ»ÖÃ£¨Íâ²¿Öá²»¶¯µÄÇé¿öÏÂµÄÎ»ÖÃ£© 
-		 int nWeldNo;										//¶ÔÓ¦º¸·ìÔÚvtWeldSeamÖĞµÄ±àºÅ
-		 int nWeldAngleSize;								//º¸½Å´óĞ¡
-		 double dDirAngle;									//·½Ïò½Ç£¨È¡º¸½Ó¹ì¼£ÖĞ¼ä¶Î×ø±êµãµÄRz¼ÆËãµÃ³ö 360 - RZ£©
-		 int n1;											//¸¨Öú¼ÆËã·½Ïò½ÇµÄ±äÁ¿£¨ÉÌ£©
-		 int n2;											//¸¨Öú¼ÆËã·½Ïò½ÇµÄ±äÁ¿£¨ÓàÊı£©
-		 int nDirAngle;										//·½Ïò½Ç£¨ÕûÊı£©
-		 CString sWeldName;									//º¸·ìº¸½ÓÌáÊ¾×Ö·û´®
-		 vector<T_WELD_PARA> vtWeldPara;					//¹¤ÒÕ²ÎÊı
+		 E_WELD_SEAM_TYPE eWeldSeamType;					//ç„Šç¼ç±»å‹
+		 vector<T_ROBOT_COORS> vtRealWeldCoord;				//ç„Šæ¥è½¨è¿¹åæ ‡
+		 vector<T_ROBOT_COORS> vtAdjustRealWeldCoord;		//ç„Šæ¥è½¨è¿¹åæ ‡ï¼ˆæ·»åŠ è¿‡è¡¥å¿é‡åï¼‰
+		 vector<int> vnPtnType;								//ç„Šæ¥è½¨è¿¹ç‚¹ç±»å‹
+		 double dExAxlePos;									//ç„Šæ¥æ—¶å¤–éƒ¨è½´ä½ç½®ï¼ˆå¤–éƒ¨è½´ä¸åŠ¨çš„æƒ…å†µä¸‹çš„ä½ç½®ï¼‰ 
+		 int nWeldNo;										//å¯¹åº”ç„Šç¼åœ¨vtWeldSeamä¸­çš„ç¼–å·
+		 int nWeldAngleSize;								//ç„Šè„šå¤§å°
+		 double dDirAngle;									//æ–¹å‘è§’ï¼ˆå–ç„Šæ¥è½¨è¿¹ä¸­é—´æ®µåæ ‡ç‚¹çš„Rzè®¡ç®—å¾—å‡º 360 - RZï¼‰
+		 int n1;											//è¾…åŠ©è®¡ç®—æ–¹å‘è§’çš„å˜é‡ï¼ˆå•†ï¼‰
+		 int n2;											//è¾…åŠ©è®¡ç®—æ–¹å‘è§’çš„å˜é‡ï¼ˆä½™æ•°ï¼‰
+		 int nDirAngle;										//æ–¹å‘è§’ï¼ˆæ•´æ•°ï¼‰
+		 CString sWeldName;									//ç„Šç¼ç„Šæ¥æç¤ºå­—ç¬¦ä¸²
+		 vector<T_WELD_PARA> vtWeldPara;					//å·¥è‰ºå‚æ•°
 
-		 // ÑİÊ¾Ö»È¡Ò»×éÄÚµÚÒ»Ìõº¸·ì£¬´Ë´Î·Ö×é°ü½Çº¸·ì·ÖÎªÒ»×é£¬×î¶àÁ½Ìõº¸·ì£¬ÆäÓàº¸·ìµ¥¶À×÷ÎªÒ»×é
+		 // æ¼”ç¤ºåªå–ä¸€ç»„å†…ç¬¬ä¸€æ¡ç„Šç¼ï¼Œæ­¤æ¬¡åˆ†ç»„åŒ…è§’ç„Šç¼åˆ†ä¸ºä¸€ç»„ï¼Œæœ€å¤šä¸¤æ¡ç„Šç¼ï¼Œå…¶ä½™ç„Šç¼å•ç‹¬ä½œä¸ºä¸€ç»„
 		 if (i > 0 && pWeldData->DetermineWarpMode(nGroupNo) > 0)
 		 {
 			 break;
 		 }
 		 // ----------------------------
 
-		 // ¼ÓÔØº¸½Ó¹ì¼£
+		 // åŠ è½½ç„Šæ¥è½¨è¿¹
 		 if (false == pWeldData->LoadRealWeldTrack(nGroupNo, i, eWeldSeamType, dExAxlePos, vtRealWeldCoord, vnPtnType)) {
 			 break;
 		 }
@@ -7179,52 +7231,52 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 nDirAngle = (n1 * 45 + n2) % 360;
 		 eWeldSeamType == E_FLAT_SEAM ? nFlatWeldNo++ : nStandWeldNo++;
 		 sWeldName.Format("%s%s%d",
-			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "¸ú×Ù" : "ÆÕÍ¨",
-			 eWeldSeamType == E_FLAT_SEAM ? "Æ½º¸" : "Á¢º¸",
+			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "è·Ÿè¸ª" : "æ™®é€š",
+			 eWeldSeamType == E_FLAT_SEAM ? "å¹³ç„Š" : "ç«‹ç„Š",
 			 eWeldSeamType == E_FLAT_SEAM ? nFlatWeldNo : nStandWeldNo);
 
-		 //ÒÑĞŞ¸Ä
-		 CString str1 = pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "¸ú×Ù" : "ÆÕÍ¨";
-		 CString str2 = eWeldSeamType == E_FLAT_SEAM ? "Æ½º¸" : "Á¢º¸";
+		 //å·²ä¿®æ”¹
+		 CString str1 = pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "è·Ÿè¸ª" : "æ™®é€š";
+		 CString str2 = eWeldSeamType == E_FLAT_SEAM ? "å¹³ç„Š" : "ç«‹ç„Š";
 		 str1 = XUI::Languge::GetInstance().translate(str1.GetBuffer());
 		 str2 = XUI::Languge::GetInstance().translate(str2.GetBuffer());
 		 sWeldName = XUI::Languge::GetInstance().translate("{0}{1}{2}", str1.GetBuffer(), str2.GetBuffer(), eWeldSeamType == E_FLAT_SEAM ? nFlatWeldNo : nStandWeldNo);
 		
-		 WriteLog("¡¾½»»¥²ÎÊı¡¿×éºÅ£º%d,º¸·ìºÅ£º%d %s%s º¸½Å:%d Æğµã¹ıº¸¿×:%.3lf ÖÕµã¹ıº¸¿×:%.3lf", nGroupNo, nWeldNo,
-			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "¸ú×Ù" : "ÆÕÍ¨",
-			 E_FLAT_SEAM == eWeldSeamType ? "Æ½º¸" : "Á¢º¸",
+		 WriteLog("ã€äº¤äº’å‚æ•°ã€‘ç»„å·ï¼š%d,ç„Šç¼å·ï¼š%d %s%s ç„Šè„š:%d èµ·ç‚¹è¿‡ç„Šå­”:%.3lf ç»ˆç‚¹è¿‡ç„Šå­”:%.3lf", nGroupNo, nWeldNo,
+			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode ? "è·Ÿè¸ª" : "æ™®é€š",
+			 E_FLAT_SEAM == eWeldSeamType ? "å¹³ç„Š" : "ç«‹ç„Š",
 			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.nWeldAngleSize,
 			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.dStartHoleSize,
 			 pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.dEndHoleSize);
 
-		 //Æ¥Åä¶ÔÓ¦º¸½Å¹¤ÒÕ
+		 //åŒ¹é…å¯¹åº”ç„Šè„šå·¥è‰º
 		 if (false == pWeldData->GetWeldParam(eWeldSeamType, nWeldAngleSize, vtWeldPara))
 		 {
-			 XiMessageBox("¼ÓÔØº¸½Ó¹¤ÒÕ²ÎÊıÊ§°Ü£¡");
+			 XiMessageBox("åŠ è½½ç„Šæ¥å·¥è‰ºå‚æ•°å¤±è´¥ï¼");
 			 return false;
 		 }
-		 //ÅĞ¶Ï¸Ãº¸·ìÊÇ·ñÎªĞèÒª¸ú×Ùº¸½Ó
+		 //åˆ¤æ–­è¯¥ç„Šç¼æ˜¯å¦ä¸ºéœ€è¦è·Ÿè¸ªç„Šæ¥
 		 if (pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bWeldMode)
 		 {
-			 //¹Ø±Õ¾µÆ¬·À»¤
+			 //å…³é—­é•œç‰‡é˜²æŠ¤
 			 tTraceWeldObj.m_ptUnit->SwitchIO("MeasureLensProtection", false);
-			 //´ò¿ª¾µÆ¬·À»¤
+			 //æ‰“å¼€é•œç‰‡é˜²æŠ¤
 			 tTraceWeldObj.m_ptUnit->SwitchIO("TrackLensProtection", true);
-			 //´ò¿ª¸ú×Ù¼¤¹â
+			 //æ‰“å¼€è·Ÿè¸ªæ¿€å…‰
 			 tTraceWeldObj.m_ptUnit->SwitchIO("TrackLaser", true);
 
-			 //*********¸ú×Ùº¸½Ó£¨Ôİ²»Ê¹ÓÃvtAdjustRealWeldCoord£¬¶øÊÇÊ¹ÓÃvtRealWeldCoord ×÷Îªº¸½Ó¹ì¼££©*********//
-			 //*********¸ú×Ùº¸½Ó£¨Ä¬ÈÏµ¥µÀº¸½Ó£©*********//
+			 //*********è·Ÿè¸ªç„Šæ¥ï¼ˆæš‚ä¸ä½¿ç”¨vtAdjustRealWeldCoordï¼Œè€Œæ˜¯ä½¿ç”¨vtRealWeldCoord ä½œä¸ºç„Šæ¥è½¨è¿¹ï¼‰*********//
+			 //*********è·Ÿè¸ªç„Šæ¥ï¼ˆé»˜è®¤å•é“ç„Šæ¥ï¼‰*********//
 			 tTraceWeldObj.m_vtTrackTheoryTrack = pWeldData->m_vtTrackTheoryTrack;
 			 vector<T_ANGLE_PULSE> vtRealWeldPulse;
 			 //vector<int> vnDataPointType(vtRealWeldCoord.size(),E_WELD_TRACK);
 			 vector<int> vnDataPointType(vnPtnType);
-			 //Ïà»úÄ£Ê½£ºÈí´¥·¢
+			 //ç›¸æœºæ¨¡å¼ï¼šè½¯è§¦å‘
 			 //E_DHGIGE_ACQUISITION_MODE eCameraMode = E_ACQUISITION_MODE_SOURCE_SOFTWARE;
-			 //Ïà»úÄ£Ê½£º»Øµ÷¹Ø±Õ
+			 //ç›¸æœºæ¨¡å¼ï¼šå›è°ƒå…³é—­
 			 //E_DHGIGE_CALL_BACK eCallBack = E_CALL_BACK_MODE_OFF;
-			 //******* Ìí¼ÓÊÕÏÂÇ¹×ø±ê
-			 //ºÏ³ÉÊÀ½ç×ø±ê £¨ÒÔÏÂ#ifdef SINGLE_ROBOTĞ´·¨ Ô´×ÔWeldAfterMeasure->DoWeldingÖĞÊ¹ÓÃÍâ²¿ÖáµÄ·½Ê½£©
+			 //******* æ·»åŠ æ”¶ä¸‹æªåæ ‡
+			 //åˆæˆä¸–ç•Œåæ ‡ ï¼ˆä»¥ä¸‹#ifdef SINGLE_ROBOTå†™æ³• æºè‡ªWeldAfterMeasure->DoWeldingä¸­ä½¿ç”¨å¤–éƒ¨è½´çš„æ–¹å¼ï¼‰
 #ifdef SINGLE_ROBOT
 			 double dEx = vtRealWeldCoord[0].dY;
 #else
@@ -7240,22 +7292,22 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 				 vtRealWeldCoord[nIdx].dBX = 0;
 #endif
 			 }
-			 // º¸½Ó³¤¶È
+			 // ç„Šæ¥é•¿åº¦
 			 tTraceWeldObj.m_pTraceModel->m_dWeldLen = pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.dThoeryLength;
-			 // ½áÎ²ÊÇ·ñ¸ÉÉæ,Ôİ¶¨45mm±ä»¯45¶È£¬²½³¤3mmÃ¿²½
+			 // ç»“å°¾æ˜¯å¦å¹²æ¶‰,æš‚å®š45mmå˜åŒ–45åº¦ï¼Œæ­¥é•¿3mmæ¯æ­¥
 			 if (pWeldData->m_vvtWeldLineInfoGroup[nGroupNo][nWeldNo].tAtrribute.bEndFixScan)
 			 {
 				 tTraceWeldObj.m_pTraceModel->m_nCloseTrackingPos = 15;
 			 }
-			 //  ×î¸ßµã¸³Öµ
+			 //  æœ€é«˜ç‚¹èµ‹å€¼
 			 tTraceWeldObj.m_dWorkPieceHighTop = pWeldData->CalcBoardMaxHeight(nGroupNo);
-			 // ×ËÌ¬·ÖÅä£¬²ğ·Ö»úÆ÷ÈËºÍÍâÖá×ø±ê
+			 // å§¿æ€åˆ†é…ï¼Œæ‹†åˆ†æœºå™¨äººå’Œå¤–è½´åæ ‡
 			 vtRealWeldCoord = tTraceWeldObj.GetRealWeldData(tTraceWeldObj.m_pRobotDriver, vtRealWeldCoord);
 			 if (nSingleBoard != 4)
 			 {
-				 // Ìí¼ÓÊÕÏÂÇ¹°²È«Î»ÖÃ
+				 // æ·»åŠ æ”¶ä¸‹æªå®‰å…¨ä½ç½®
 				 tTraceWeldObj.AddSafeDownGunPos(vtRealWeldCoord, vnDataPointType, PARA_SYSTEM(dUpOrDownGunSafeHeight), tTraceWeldObj.m_dWorkPieceHighTop);
-				 // ¼ÆËãÏÂÇ¹¹Ø½Ú×ø±ê¼°¿ÉÒÔÁ¬ĞøÔË¶¯µÄº¸½Ó¹ì¼£¹Ø½Ú×ø±ê¹ì¼£
+				 // è®¡ç®—ä¸‹æªå…³èŠ‚åæ ‡åŠå¯ä»¥è¿ç»­è¿åŠ¨çš„ç„Šæ¥è½¨è¿¹å…³èŠ‚åæ ‡è½¨è¿¹
 #ifdef SINGLE_ROBOT
 				 double dRealRobotExPos = vtRealWeldCoord[1].dY, dRealWeldExPos;
 #else
@@ -7268,13 +7320,13 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 				 if (!pWeldData->CalcContinuePulseForWeld(vtRealWeldCoord, vtRealWeldPulse, TRUE))
 				 {
 					 bool bCalcRst = false;
-					 bool bAddorSubtract = false;//true¼Ófalse¼õ
+					 bool bAddorSubtract = false;//trueåŠ falseå‡
 					 int nIndex = 1;
 					 //double dExAxleChangeDis = dMinExAxleChangeDis;
 					 double dExAxleChangeDis = 0;
 					 while (dMinExAxleChangeDis <= dExAxleChangeDis && dExAxleChangeDis <= dMaxExAxleChangeDis) {
 						 dRealWeldExPos = dRealRobotExPos;
-						 vector<T_ROBOT_COORS> vtTempWeldCoord(vtRealWeldCoord); // º¸½Ó¹ì¼£ + ÏÂÇ¹ÊÕÇ¹×ø±ê
+						 vector<T_ROBOT_COORS> vtTempWeldCoord(vtRealWeldCoord); // ç„Šæ¥è½¨è¿¹ + ä¸‹æªæ”¶æªåæ ‡
 						 dRealWeldExPos += dExAxleChangeDis;
 
 						 double dMaxExAxlePos = (double)pWeldData->m_ptUnit->GetRobotCtrl()->m_tExternalAxle[pWeldData->m_ptUnit->m_nTrackAxisNo - 1].lMaxPulseNum * pWeldData->m_ptUnit->GetRobotCtrl()->m_tExternalAxle[pWeldData->m_ptUnit->m_nTrackAxisNo - 1].dPulse;
@@ -7288,7 +7340,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 							 if (vtTempWeldCoord[nPtnNo].dBY > dMaxExAxlePos || vtTempWeldCoord[nPtnNo].dBY < dMinExAxlePos)
 							 {
-								 WriteLog("Íâ²¿Öá%d Ä¿±êÎ»ÖÃ%.3lf ³¬³öÉè¶¨¼«ÏŞ%.3lf - %.3lf!", pWeldData->m_ptUnit->m_nTrackAxisNo, vtTempWeldCoord[nPtnNo].dBY, dMinExAxlePos, dMaxExAxlePos);
+								 WriteLog("å¤–éƒ¨è½´%d ç›®æ ‡ä½ç½®%.3lf è¶…å‡ºè®¾å®šæé™%.3lf - %.3lf!", pWeldData->m_ptUnit->m_nTrackAxisNo, vtTempWeldCoord[nPtnNo].dBY, dMinExAxlePos, dMaxExAxlePos);
 								 continue;
 							 }
 #else
@@ -7297,7 +7349,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 							 if (vtTempWeldCoord[nPtnNo].dBX > dMaxExAxlePos || vtTempWeldCoord[nPtnNo].dBX < dMinExAxlePos)
 							 {
-								 WriteLog("Íâ²¿Öá%d Ä¿±êÎ»ÖÃ%.3lf ³¬³öÉè¶¨¼«ÏŞ%.3lf - %.3lf!", pWeldData->m_ptUnit->m_nTrackAxisNo, vtTempWeldCoord[nPtnNo].dBY, dMinExAxlePos, dMaxExAxlePos);
+								 WriteLog("å¤–éƒ¨è½´%d ç›®æ ‡ä½ç½®%.3lf è¶…å‡ºè®¾å®šæé™%.3lf - %.3lf!", pWeldData->m_ptUnit->m_nTrackAxisNo, vtTempWeldCoord[nPtnNo].dBY, dMinExAxlePos, dMaxExAxlePos);
 								 continue;
 							 }
 #endif // SINGLE_ROBOT
@@ -7316,12 +7368,12 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 					 }
 					 if (false == bCalcRst)
 					 {
-						 XiMessageBox("¶àÍâ²¿ÖáÎ»ÖÃ£¬º¸½ÓÏÂÇ¹¹ı¶Éµã¼ÆËãÊ§°Ü£¡");
+						 XiMessageBox("å¤šå¤–éƒ¨è½´ä½ç½®ï¼Œç„Šæ¥ä¸‹æªè¿‡æ¸¡ç‚¹è®¡ç®—å¤±è´¥ï¼");
 						 return false;
 					 }
 				 }
 			 }
-			 //¼ÇÂ¼½áÎ²Êı¾İ,°ü½ÇÊ±»á¼ÇÂ¼¶à¸ö½áÎ²Êı¾İ£¬²»°ü½ÇÊ±¸ÄÊı¾İÎª¿Õ
+			 //è®°å½•ç»“å°¾æ•°æ®,åŒ…è§’æ—¶ä¼šè®°å½•å¤šä¸ªç»“å°¾æ•°æ®ï¼Œä¸åŒ…è§’æ—¶æ”¹æ•°æ®ä¸ºç©º
 			 tTraceWeldObj.m_pTraceModel->m_bCameraFindWeldEnd = false;
 			 tTraceWeldObj.RecordEndPointCoors(tTraceWeldObj.m_pRobotDriver, vtRealWeldCoord, vnDataPointType);
 			 tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack = new image_process::FlatWeldRealTimeTrack();
@@ -7332,23 +7384,23 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack->openCamera(E_ACQUISITION_MODE_SOURCE_SOFTWARE, E_CALL_BACK_MODE_OFF);
 			 if (!tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack->startAcquisition())
 			 {
-				 XUI::MesBox::PopError("É¨Ãè¿ªÆô²ÉÍ¼Ê§°Ü£¡");
+				 XUI::MesBox::PopError("æ‰«æå¼€å¯é‡‡å›¾å¤±è´¥ï¼");
 				 return false;
 			 }
 			 CHECK_BOOL_RETURN(tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack->beforeProcessImage());
-			 //tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, true, true, eCameraMode, eCallBack); // ÏÂÇ¹Ê± ¿ªÏà»ú ¼¤¹â
+			 //tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, true, true, eCameraMode, eCallBack); // ä¸‹æªæ—¶ å¼€ç›¸æœº æ¿€å…‰
 			 //tTraceWeldObj.m_ptUnit->m_vpImageCapture[tTraceWeldObj.m_ptUnit->m_nTrackCameraNo]->StartAcquisition();
 			 for (int nLayerNo = pWeldData->m_nPauseLayerNo; nLayerNo < vtWeldPara.size(); nLayerNo++)
 			 {
 				 T_WELD_PARA tWeldPara = vtWeldPara[nLayerNo];
-				 //ÒÑĞŞ¸Ä
+				 //å·²ä¿®æ”¹
 				 if (TRUE == m_bNaturalPop/* *pWeldData->m_pIsNaturalPop*/ &&
-					 IDOK != XUI::MesBox::PopOkCancel("{0}º¸½Å{1}µÚ{2}µÀº¸½Ó½Ç¶È{3}£¿", sWeldName.GetBuffer(),
+					 IDOK != XUI::MesBox::PopOkCancel("{0}ç„Šè„š{1}ç¬¬{2}é“ç„Šæ¥è§’åº¦{3}ï¼Ÿ", sWeldName.GetBuffer(),
 						 tWeldPara.nWeldAngleSize,
 						 tWeldPara.nLayerNo + 1, nDirAngle))
 					 /*
 				 if (TRUE == *pWeldData->m_pIsNaturalPop &&
-					 IDOK != XiMessageBox("%s º¸½Å%d µÚ%dµÀ º¸½Ó½Ç¶È%d £¿",
+					 IDOK != XiMessageBox("%s ç„Šè„š%d ç¬¬%dé“ ç„Šæ¥è§’åº¦%d ï¼Ÿ",
 						 sWeldName,
 						 tWeldPara.nWeldAngleSize,
 						 tWeldPara.nLayerNo + 1,
@@ -7356,7 +7408,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 				 {
 					 continue;
 				 }
-				 // Æ¥Åäº¸½Ó×ËÌ¬
+				 // åŒ¹é…ç„Šæ¥å§¿æ€
 				 for (size_t i = 0; i < vtRealWeldCoord.size(); i++)
 				 {
 					 vtRealWeldCoord[i].dRY = tWeldPara.dWeldAngle * (double)tTraceWeldObj.m_nRobotInstallDir;
@@ -7365,10 +7417,10 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 				 if (m_vpUnit[0]->m_bBreakPointContinue)
 				 {
 					 CString strCoutPath;
-					 strCoutPath.Format("%s%s%sÀíÂÛº¸½ÓÊı¾İ.txt", OUTPUT_PATH, tTraceWeldObj.m_pRobotDriver->m_strRobotName, RECOGNITION_FOLDER);
-					 //»ñÈ¡º¸½Ó¹ì¼£
+					 strCoutPath.Format("%s%s%sç†è®ºç„Šæ¥æ•°æ®.txt", OUTPUT_PATH, tTraceWeldObj.m_pRobotDriver->m_strRobotName, RECOGNITION_FOLDER);
+					 //è·å–ç„Šæ¥è½¨è¿¹
 					 tTraceWeldObj.LoadDataRobotCoors(vtRealWeldCoord, vnDataPointType, strCoutPath.GetBuffer());
-					 for (int i = 0; i < vtRealWeldCoord.size(); i++) // ÀíÂÛº¸½ÓÊı¾İ.txtÖĞ¼ÇÂ¼µÄ×ø±êxyzÊÇÊÀ½ç×ø±ê »Ö¸´³É»úÆ÷ÈË×ø±ê ´Ë´¦xyÍâ²¿Öá²»Í¨ÓÃ
+					 for (int i = 0; i < vtRealWeldCoord.size(); i++) // ç†è®ºç„Šæ¥æ•°æ®.txtä¸­è®°å½•çš„åæ ‡xyzæ˜¯ä¸–ç•Œåæ ‡ æ¢å¤æˆæœºå™¨äººåæ ‡ æ­¤å¤„xyå¤–éƒ¨è½´ä¸é€šç”¨
 					 {
 						 double dExAxleOffset = 1 == tTraceWeldObj.m_pRobotDriver->m_nRobotInstallDir ? 0.0 : -500.0;
 #ifdef SINGLE_ROBOT
@@ -7379,14 +7431,14 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 					 }
 				 }
-				 // ÉèÖÃº¸½Ó¹¤ÒÕ
+				 // è®¾ç½®ç„Šæ¥å·¥è‰º
 				 tTraceWeldObj.SetWeldTlyParam(tWeldPara);		
 				 if (nSingleBoard != 4)
 				 {
-					 //³õÊ¼¶ÎÊı¾İ´¦Àí
-					 pWeldData->m_pScanInit->SetTrackProcessParam(nLayerNo);// ²âÊÔ¸ú×Ù¶à²ã¶àµÀ
+					 //åˆå§‹æ®µæ•°æ®å¤„ç†
+					 pWeldData->m_pScanInit->SetTrackProcessParam(nLayerNo);// æµ‹è¯•è·Ÿè¸ªå¤šå±‚å¤šé“
 					 if (!tTraceWeldObj.WeldProcessBefor(tTraceWeldObj.m_pRobotDriver, vtRealWeldCoord, vnDataPointType, vtRealWeldPulse, TRUE)) {
-						 XiMessageBoxOk("³õÊ¼¶ÎÊı¾İ´¦ÀíÊ§°Ü");
+						 XiMessageBoxOk("åˆå§‹æ®µæ•°æ®å¤„ç†å¤±è´¥");
 						 return false;
 					 }
 				 }
@@ -7394,7 +7446,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 				 {
 					 TrackFilter_Init(tTraceWeldObj.m_ptUnit->m_nRobotSmooth, 3.0);
 					 
-					 tTraceWeldObj.m_pTraceModel->m_eStartWrapAngleType = E_WRAPANGLE_ONCE; //µ¥°åµ¥½îÒ»´Î°ü½Ç
+					 tTraceWeldObj.m_pTraceModel->m_eStartWrapAngleType = E_WRAPANGLE_ONCE; //å•æ¿å•ç­‹ä¸€æ¬¡åŒ…è§’
 					 tTraceWeldObj.m_pRobotDriver->m_vtWeldLineInWorldPoints.clear();
 					 tTraceWeldObj.m_pTraceModel->m_vtWeldLinePointType.clear();
 
@@ -7412,11 +7464,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 						 tTraceWeldObj.m_pRobotDriver->m_vtWeldLineInWorldPoints.push_back(vtRealWeldCoord.at(nTrackNo));
 						 tTraceWeldObj.m_pTraceModel->m_vtWeldLinePointType.push_back(vnDataPointType[nTrackNo]);
 					 }
-					 //ËøĞ±ÂÊ
+					 //é”æ–œç‡
 					 CHECK_BOOL_RETURN(tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack->lockLaser(tTraceWeldObj.m_ptUnit->m_bBreakPointContinue));
 					 //CHECK_BOOL_RETURN(pWeldData->m_pScanInit->RealTimeTrackLockArcBefor(tTraceWeldObj.m_pRobotDriver, tTraceWeldObj.m_ptUnit->m_bBreakPointContinue));
 				 }
-				 //¿ªÊ¼º¸½Ó
+				 //å¼€å§‹ç„Šæ¥
 				 bool bDoWeldSuccess;
 				 if (tTraceWeldObj.m_pRobotDriver->m_eRobotBrand != ROBOT_BRAND_ESTUN)
 				 {
@@ -7429,39 +7481,39 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 						 tTraceWeldObj.m_pRobotDriver->m_vtWeldLineInWorldPoints,
 						 tTraceWeldObj.m_pTraceModel->m_vtWeldLinePointType, true, eWeldSeamType, false);
 				 }
-				 tTraceWeldObj.SavePauseInfo(nGroupNo, i, nLayerNo); // ÔİÍ£¼ÌĞøÊ¹ÓÃ
+				 tTraceWeldObj.SavePauseInfo(nGroupNo, i, nLayerNo); // æš‚åœç»§ç»­ä½¿ç”¨
 				 if (!bDoWeldSuccess)
 				 {
 					 return false;
 				 }
 			 }
 			 tTraceWeldObj.m_pScanInit->m_pFlatWeldRealTimeTrack->closeCamera();
-			 //tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, false); // ¹ØÏà»ú ¼¤¹â
+			 //tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, false); // å…³ç›¸æœº æ¿€å…‰
 		 }
 		 else {
-			 //¹Ø±Õ¾µÆ¬·À»¤
-			 WriteLog("¹Ø±Õ¾µÆ¬·À»¤");
+			 //å…³é—­é•œç‰‡é˜²æŠ¤
+			 WriteLog("å…³é—­é•œç‰‡é˜²æŠ¤");
 			 tTraceWeldObj.m_ptUnit->SwitchIO("MeasureLensProtection", false);
-			 WriteLog("¹Ø±Õ¾µÆ¬·À»¤Íê³É");
+			 WriteLog("å…³é—­é•œç‰‡é˜²æŠ¤å®Œæˆ");
 
-			 //*********Ö±½ÓÊ¹ÓÃÀíÂÛ¹ì¼£º¸½Ó*********//
-			 // ¶à²ã¶àµÀº¸½Ó(µ¥µÀ²ÎÊı¼´µ¥µÀº¸½Ó)
+			 //*********ç›´æ¥ä½¿ç”¨ç†è®ºè½¨è¿¹ç„Šæ¥*********//
+			 // å¤šå±‚å¤šé“ç„Šæ¥(å•é“å‚æ•°å³å•é“ç„Šæ¥)
 			 for (int nLayerNo = pWeldData->m_nPauseLayerNo; nLayerNo < vtWeldPara.size(); nLayerNo++)
 			 {
 				 T_WELD_PARA tWeldPara = vtWeldPara[nLayerNo];
-				 WriteLog("¹¤ÒÕ²ÎÊı%s£ºµÚ%dµÀ Æ«ÒÆÁ¿%.3lf %.3lf",
+				 WriteLog("å·¥è‰ºå‚æ•°%sï¼šç¬¬%dé“ åç§»é‡%.3lf %.3lf",
 					 tWeldPara.strWorkPeace, tWeldPara.nLayerNo, tWeldPara.CrosswiseOffset, tWeldPara.verticalOffset);
-				 //ÒÑĞŞ¸Ä
-				 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XUI::MesBox::PopOkCancel("{0}º¸½Å{1}µÚ{2}µÀº¸½Ó½Ç¶È{3}", sWeldName.GetBuffer(), tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)/*XiMessageBox("%s º¸½Å%d µÚ%dµÀ º¸½Ó½Ç¶È%d £¿",
+				 //å·²ä¿®æ”¹
+				 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XUI::MesBox::PopOkCancel("{0}ç„Šè„š{1}ç¬¬{2}é“ç„Šæ¥è§’åº¦{3}", sWeldName.GetBuffer(), tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)/*XiMessageBox("%s ç„Šè„š%d ç¬¬%dé“ ç„Šæ¥è§’åº¦%d ï¼Ÿ",
 					 sWeldName, tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)*/)
 					 /*
-				 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XiMessageBox("%s º¸½Å%d µÚ%dµÀ º¸½Ó½Ç¶È%d £¿",
+				 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XiMessageBox("%s ç„Šè„š%d ç¬¬%dé“ ç„Šæ¥è§’åº¦%d ï¼Ÿ",
 					 sWeldName, tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle))*/
 				 {
 					 continue;
 				 }
 
-				 // jwq ÉèÖÃÊÇ·ñ¿ªÆôĞÂ¸ú×Ù
+				 // jwq è®¾ç½®æ˜¯å¦å¼€å¯æ–°è·Ÿè¸ª
 				 if (PARA_SYSTEM(bScanTrackingWeldEnable) && eWeldSeamType != E_STAND_SEAM)
 				 {
 					 pWeldData->m_ptUnit->m_cRealTimeTrack.setEnable(true);
@@ -7474,48 +7526,48 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 					 tTraceWeldObj.m_ptUnit->SwitchIO("TrackLaser", false);
 				 }
 
-				 // jwq ÉèÖÃ¸ú×Ù²¹³¥
+				 // jwq è®¾ç½®è·Ÿè¸ªè¡¥å¿
 				 if (PARA_SYSTEM(bScanTrackingWeldEnable) && eWeldSeamType != E_STAND_SEAM)
 				 {
 					 double dFlatHorComp =/*-2.5*/ tTraceWeldObj.m_mdFlatHorComp[405.0];
 					 double dFlatHeightComp =/*-0.7*/ tTraceWeldObj.m_mdFlatHeightComp[405.0];
-					 double dGunToEyeCompenX = tTraceWeldObj.m_pTraceModel->m_tWeldParam.CrosswiseOffset + dFlatHorComp;	// Íâ¼ÓÄÚ¼õ
-					 double dGunToEyeCompenZ = tTraceWeldObj.m_pTraceModel->m_tWeldParam.verticalOffset + dFlatHeightComp;// ÏòÉÏ²¹¼Ó ÏòÏÂ²¹¼õ
+					 double dGunToEyeCompenX = tTraceWeldObj.m_pTraceModel->m_tWeldParam.CrosswiseOffset + dFlatHorComp;	// å¤–åŠ å†…å‡
+					 double dGunToEyeCompenZ = tTraceWeldObj.m_pTraceModel->m_tWeldParam.verticalOffset + dFlatHeightComp;// å‘ä¸Šè¡¥åŠ  å‘ä¸‹è¡¥å‡
 					 dGunToEyeCompenZ *= tTraceWeldObj.m_nRobotInstallDir;
 					 pWeldData->m_ptUnit->m_cRealTimeTrack.setUnit(*(pWeldData->m_ptUnit));
 					 pWeldData->m_ptUnit->m_cRealTimeTrack.setCompensation(dGunToEyeCompenX, dGunToEyeCompenZ);
 				 }
 
-				 //¼ÓÔØ²¹³¥Á¿ºóµÄº¸½Ó¹ì¼£Êä³öÖÁvtAdjustRealWeldCoord
-				 WriteLog("¼ÆËãÊµ¼Êº¸½Ó¹ì¼££¨Ö±½Ç£©");
+				 //åŠ è½½è¡¥å¿é‡åçš„ç„Šæ¥è½¨è¿¹è¾“å‡ºè‡³vtAdjustRealWeldCoord
+				 WriteLog("è®¡ç®—å®é™…ç„Šæ¥è½¨è¿¹ï¼ˆç›´è§’ï¼‰");
 				 pWeldData->TrackComp(nGroupNo, eWeldSeamType, vtRealWeldCoord, tWeldPara, vtAdjustRealWeldCoord);
 
 				 pWeldData->SaveWeldTrack(nGroupNo, i, tWeldPara.nLayerNo, eWeldSeamType, dExAxlePos, vtAdjustRealWeldCoord, vnPtnType);
 				 pWeldData->GetPauseWeldTrack(vtAdjustRealWeldCoord, vnPtnType, eWeldSeamType);
-				 WriteLog("¼ÆËãÊµ¼Êº¸½Ó¹ì¼££¨Ö±½Ç£©Íê³É");
+				 WriteLog("è®¡ç®—å®é™…ç„Šæ¥è½¨è¿¹ï¼ˆç›´è§’ï¼‰å®Œæˆ");
 
-				 // jwq ¿ªÆôÏà»ú
+				 // jwq å¼€å¯ç›¸æœº
 				 if (PARA_SYSTEM(bScanTrackingWeldEnable) && eWeldSeamType != E_STAND_SEAM)
 				 {
 					 if (pWeldData->m_ptUnit->m_cRealTimeTrack.isEnable())
 					 {
-						 E_DHGIGE_ACQUISITION_MODE eCameraMode = E_ACQUISITION_MODE_SOURCE_SOFTWARE;//Ïà»úÄ£Ê½£ºÈí´¥·¢
-						 E_DHGIGE_CALL_BACK eCallBack = E_CALL_BACK_MODE_OFF;//Ïà»úÄ£Ê½£º»Øµ÷¹Ø±Õ
-						 tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, true, true, eCameraMode, eCallBack); // ÏÂÇ¹Ê± ¿ªÏà»ú ¼¤¹â
+						 E_DHGIGE_ACQUISITION_MODE eCameraMode = E_ACQUISITION_MODE_SOURCE_SOFTWARE;//ç›¸æœºæ¨¡å¼ï¼šè½¯è§¦å‘
+						 E_DHGIGE_CALL_BACK eCallBack = E_CALL_BACK_MODE_OFF;//ç›¸æœºæ¨¡å¼ï¼šå›è°ƒå…³é—­
+						 tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, true, true, eCameraMode, eCallBack); // ä¸‹æªæ—¶ å¼€ç›¸æœº æ¿€å…‰
 						 tTraceWeldObj.m_ptUnit->m_vpImageCapture[tTraceWeldObj.m_ptUnit->m_nTrackCameraNo]->StartAcquisition();
 					 }
 				 }
 				 bool bDoWeldSuccess = pWeldData->DoWelding(nGroupNo, nWeldNo, eWeldSeamType, vtAdjustRealWeldCoord, vnPtnType, tWeldPara);
 
-				 // jwq ¹Ø±ÕÏà»ú
+				 // jwq å…³é—­ç›¸æœº
 				 if (PARA_SYSTEM(bScanTrackingWeldEnable) && eWeldSeamType != E_STAND_SEAM)
 				 {
 					 if (pWeldData->m_ptUnit->m_cRealTimeTrack.isEnable())
 					 {
-						 tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, false); // ¹ØÏà»ú ¼¤¹â
+						 tTraceWeldObj.m_ptUnit->SwitchDHCamera(tTraceWeldObj.m_ptUnit->m_nTrackCameraNo, false); // å…³ç›¸æœº æ¿€å…‰
 					 }
 				 }
-				 pWeldData->SavePauseInfo(nGroupNo, i, nLayerNo); // ÔİÍ£¼ÌĞøÊ¹ÓÃ
+				 pWeldData->SavePauseInfo(nGroupNo, i, nLayerNo); // æš‚åœç»§ç»­ä½¿ç”¨
 				 if (false == bDoWeldSuccess)
 				 {
 					 return false;
@@ -7530,26 +7582,26 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  
  bool CAssemblyWeld::WeldSchedule_G(WeldAfterMeasure* pWeldData, int nGroupNo, int nLayerNo)
  {
-	 // Çå³ıÓÃÓÚÉú³ÉÍêÕûº¸½ÓJob µÄ»º³åÇø
+	 // æ¸…é™¤ç”¨äºç”Ÿæˆå®Œæ•´ç„Šæ¥Job çš„ç¼“å†²åŒº
 	 pWeldData->CleaeJobBuffer();
 	 int nFlatWeldNo = 0;
 	 int nStandWeldNo = 0;
 	 
-	 int nWeldNo = nLayerNo;									//¶ÔÓ¦º¸·ìÔÚvtWeldSeamÖĞµÄ±àºÅnWeldNo = i;
-	 E_WELD_SEAM_TYPE eWeldSeamType;					//º¸·ìÀàĞÍ
-	 vector<T_ROBOT_COORS> vtRealWeldCoord;				//º¸½Ó¹ì¼£×ø±ê
-	 vector<T_ROBOT_COORS> vtAdjustRealWeldCoord;		//º¸½Ó¹ì¼£×ø±ê£¨Ìí¼Ó¹ı²¹³¥Á¿ºó£©
-	 vector<int> vnPtnType;								//º¸½Ó¹ì¼£µãÀàĞÍ
-	 double dExAxlePos;									//º¸½ÓÊ±Íâ²¿ÖáÎ»ÖÃ£¨Íâ²¿Öá²»¶¯µÄÇé¿öÏÂµÄÎ»ÖÃ£© 
-	 int nWeldAngleSize;								//º¸½Å´óĞ¡
-	 double dDirAngle;									//·½Ïò½Ç£¨È¡º¸½Ó¹ì¼£ÖĞ¼ä¶Î×ø±êµãµÄRz¼ÆËãµÃ³ö 360 - RZ£©
-	 int n1;											//¸¨Öú¼ÆËã·½Ïò½ÇµÄ±äÁ¿£¨ÉÌ£©
-	 int n2;											//¸¨Öú¼ÆËã·½Ïò½ÇµÄ±äÁ¿£¨ÓàÊı£©
-	 int nDirAngle;										//·½Ïò½Ç£¨ÕûÊı£©
-	 CString sWeldName;									//º¸·ìº¸½ÓÌáÊ¾×Ö·û´®
-	 vector<T_WELD_PARA> vtWeldPara;					//¹¤ÒÕ²ÎÊı
+	 int nWeldNo = nLayerNo;									//å¯¹åº”ç„Šç¼åœ¨vtWeldSeamä¸­çš„ç¼–å·nWeldNo = i;
+	 E_WELD_SEAM_TYPE eWeldSeamType;					//ç„Šç¼ç±»å‹
+	 vector<T_ROBOT_COORS> vtRealWeldCoord;				//ç„Šæ¥è½¨è¿¹åæ ‡
+	 vector<T_ROBOT_COORS> vtAdjustRealWeldCoord;		//ç„Šæ¥è½¨è¿¹åæ ‡ï¼ˆæ·»åŠ è¿‡è¡¥å¿é‡åï¼‰
+	 vector<int> vnPtnType;								//ç„Šæ¥è½¨è¿¹ç‚¹ç±»å‹
+	 double dExAxlePos;									//ç„Šæ¥æ—¶å¤–éƒ¨è½´ä½ç½®ï¼ˆå¤–éƒ¨è½´ä¸åŠ¨çš„æƒ…å†µä¸‹çš„ä½ç½®ï¼‰ 
+	 int nWeldAngleSize;								//ç„Šè„šå¤§å°
+	 double dDirAngle;									//æ–¹å‘è§’ï¼ˆå–ç„Šæ¥è½¨è¿¹ä¸­é—´æ®µåæ ‡ç‚¹çš„Rzè®¡ç®—å¾—å‡º 360 - RZï¼‰
+	 int n1;											//è¾…åŠ©è®¡ç®—æ–¹å‘è§’çš„å˜é‡ï¼ˆå•†ï¼‰
+	 int n2;											//è¾…åŠ©è®¡ç®—æ–¹å‘è§’çš„å˜é‡ï¼ˆä½™æ•°ï¼‰
+	 int nDirAngle;										//æ–¹å‘è§’ï¼ˆæ•´æ•°ï¼‰
+	 CString sWeldName;									//ç„Šç¼ç„Šæ¥æç¤ºå­—ç¬¦ä¸²
+	 vector<T_WELD_PARA> vtWeldPara;					//å·¥è‰ºå‚æ•°
 
-	 // ¼ÓÔØº¸½Ó¹ì¼£
+	 // åŠ è½½ç„Šæ¥è½¨è¿¹
 	 if (false == pWeldData->LoadRealWeldTrack(nGroupNo, nWeldNo, eWeldSeamType, dExAxlePos, vtRealWeldCoord, vnPtnType)) {
 		 return false;
 	 }
@@ -7560,19 +7612,19 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 n2 = (fmod(dDirAngle, 45.0) / 45.0 > 0.5) ? 45 : 0;
 	 nDirAngle = (n1 * 45 + n2) % 360;
 	 eWeldSeamType == E_PLAT_GROOVE ? nFlatWeldNo++ : nStandWeldNo++;
-	 sWeldName.Format("%s%s%d", "ÆÕÍ¨",
-		 eWeldSeamType == E_PLAT_GROOVE ? "Æ½º¸" : "Á¢º¸",
+	 sWeldName.Format("%s%s%d", "æ™®é€š",
+		 eWeldSeamType == E_PLAT_GROOVE ? "å¹³ç„Š" : "ç«‹ç„Š",
 		 eWeldSeamType == E_PLAT_GROOVE ? nFlatWeldNo : nStandWeldNo);
 
-	 WriteLog("¡¾½»»¥²ÎÊı¡¿×éºÅ£º%d,º¸·ìºÅ£º%d %s%s º¸½Å:%d",
-		 nGroupNo, nWeldNo, "ÆÕÍ¨",
-		 E_PLAT_GROOVE == eWeldSeamType ? "Æ½º¸ÆÂ¿Ú" : "Á¢º¸ÆÂ¿Ú",
+	 WriteLog("ã€äº¤äº’å‚æ•°ã€‘ç»„å·ï¼š%d,ç„Šç¼å·ï¼š%d %s%s ç„Šè„š:%d",
+		 nGroupNo, nWeldNo, "æ™®é€š",
+		 E_PLAT_GROOVE == eWeldSeamType ? "å¹³ç„Šå¡å£" : "ç«‹ç„Šå¡å£",
 		 0);
 
-	 //Æ¥Åä¶ÔÓ¦º¸½Å¹¤ÒÕ
+	 //åŒ¹é…å¯¹åº”ç„Šè„šå·¥è‰º
 	 if (false == pWeldData->GetWeldParam(eWeldSeamType, nWeldAngleSize, vtWeldPara))
 	 {
-		 XiMessageBox("¼ÓÔØº¸½Ó¹¤ÒÕ²ÎÊıÊ§°Ü£¡");
+		 XiMessageBox("åŠ è½½ç„Šæ¥å·¥è‰ºå‚æ•°å¤±è´¥ï¼");
 		 return false;
 	 }
 	 T_WELD_PARA tWeldPara = vtWeldPara[nWeldNo];
@@ -7582,18 +7634,18 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 return false;
 	 }
 	 tWeldPara.tGrooveWaveParam = vtTWavePara[nWeldNo];
-	 WriteLog("¹¤ÒÕ²ÎÊı%s£ºµÚ%dµÀ Æ«ÒÆÁ¿%.3lf %.3lf",
+	 WriteLog("å·¥è‰ºå‚æ•°%sï¼šç¬¬%dé“ åç§»é‡%.3lf %.3lf",
 		 tWeldPara.strWorkPeace, tWeldPara.nLayerNo, tWeldPara.CrosswiseOffset, tWeldPara.verticalOffset);
-	 //ÒÑĞŞ¸Ä
-	 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XUI::MesBox::PopOkCancel("{0}º¸½Å{1}µÚ{2}µÀ º¸½Ó½Ç¶È{3}", sWeldName.GetBuffer(), tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)/*XiMessageBox("%s º¸½Å%d µÚ%dµÀ º¸½Ó½Ç¶È%d £¿",
+	 //å·²ä¿®æ”¹
+	 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XUI::MesBox::PopOkCancel("{0}ç„Šè„š{1}ç¬¬{2}é“ ç„Šæ¥è§’åº¦{3}", sWeldName.GetBuffer(), tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)/*XiMessageBox("%s ç„Šè„š%d ç¬¬%dé“ ç„Šæ¥è§’åº¦%d ï¼Ÿ",
 		sWeldName, tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle)*/)
 		 /*
-	 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XiMessageBox("%s º¸½Å%d µÚ%dµÀ º¸½Ó½Ç¶È%d £¿",
+	 if (TRUE == (*pWeldData->m_pIsNaturalPop) && IDOK != XiMessageBox("%s ç„Šè„š%d ç¬¬%dé“ ç„Šæ¥è§’åº¦%d ï¼Ÿ",
 		 sWeldName, tWeldPara.nWeldAngleSize, tWeldPara.nLayerNo + 1, nDirAngle))*/
 	 {
 		 return true;
 	 }
-	 //¼ÓÔØ²¹³¥Á¿ºóµÄº¸½Ó¹ì¼£Êä³öÖÁvtAdjustRealWeldCoord
+	 //åŠ è½½è¡¥å¿é‡åçš„ç„Šæ¥è½¨è¿¹è¾“å‡ºè‡³vtAdjustRealWeldCoord
 	 pWeldData->TrackComp(nGroupNo, eWeldSeamType, vtRealWeldCoord, tWeldPara, vtAdjustRealWeldCoord);
 	 
 	 /*
@@ -7641,7 +7693,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 vtAdjustRealWeldCoord.erase(vtAdjustRealWeldCoord.begin());
 	 vnPtnType.erase(vnPtnType.begin());
 	 bool bDoWeldSuccess = pWeldData->DoWelding(nGroupNo, nWeldNo, eWeldSeamType, vtAdjustRealWeldCoord, vnPtnType, tWeldPara);
-	 pWeldData->SavePauseInfo(nGroupNo, nWeldNo, nLayerNo); // ÔİÍ£¼ÌĞøÊ¹ÓÃ
+	 pWeldData->SavePauseInfo(nGroupNo, nWeldNo, nLayerNo); // æš‚åœç»§ç»­ä½¿ç”¨
 	 if (false == bDoWeldSuccess)
 	 {
 		 return false;
@@ -7654,18 +7706,18 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  bool CAssemblyWeld::WeldAfterMeasureMultiMachine_G()
  {
-	 bool bFlatWeldEnabld = false; // ÊÇ·ñÔËĞĞÁ¢º¸
-	 bool bStandWeldEnable = true; // ÊÇ·ñÔËĞĞÆ½º¸
+	 bool bFlatWeldEnabld = false; // æ˜¯å¦è¿è¡Œç«‹ç„Š
+	 bool bStandWeldEnable = true; // æ˜¯å¦è¿è¡Œå¹³ç„Š
 	 SetTimer(99, 200, NULL); 
 	 if (g_bAutoGroupingMark)
 	 {
-		 // ¼ÓÔØ×Ô¶¯·Ö×éÊı¾İ
+		 // åŠ è½½è‡ªåŠ¨åˆ†ç»„æ•°æ®
 		 CString strFileAuto = OUTPUT_PATH + m_vpUnit[0]->m_tContralUnit.strUnitName + "\\" + RECOGNITION_FOLDER + "planned_welds.txt";
 		 LoadGroupingResult(strFileAuto);
 	 }
 	 else
 	 {
-		 // ÊÖ¶¯·Ö×éÊı¾İ
+		 // æ‰‹åŠ¨åˆ†ç»„æ•°æ®
 		 LoadCloudProcessResultMultiMachine(m_vpUnit[0]->m_tContralUnit.strUnitName);
 	 }
 
@@ -7680,11 +7732,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 vector<CWinThread* > vpcThread;
 	 CString sHintInfo;
 
-	 for (nLayerNo = 0; nLayerNo < nMaxLayerNo; nLayerNo++) // ËùÓĞº¸·ìÃ¿²ãÃ¿µÀº¸½Ó
+	 for (nLayerNo = 0; nLayerNo < nMaxLayerNo; nLayerNo++) // æ‰€æœ‰ç„Šç¼æ¯å±‚æ¯é“ç„Šæ¥
 	 {
 		 CString cStrTitle;
-		 cStrTitle.Format(" º¸½ÓµÀÊı(1-%d) ¹Ø±Õ½øÈëÏÂÒ»²ã ÎŞĞ§ÍË³ö", nMaxLayerNo);
-		 std::vector<CString> vsInputName(1, "º¸½ÓµÀÊı:");
+		 cStrTitle.Format(" ç„Šæ¥é“æ•°(1-%d) å…³é—­è¿›å…¥ä¸‹ä¸€å±‚ æ— æ•ˆé€€å‡º", nMaxLayerNo);
+		 std::vector<CString> vsInputName(1, "ç„Šæ¥é“æ•°:");
 		 std::vector<double> vnInputData(1, nLayerNo + 1);
 		 ParamInput cParamDlg(cStrTitle, vsInputName, &vnInputData);
 		 if (TRUE == m_bNaturalPop)
@@ -7700,33 +7752,33 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 }
 			 else
 			 {
-				 sHintInfo.Format("Ìø¹ıµÚ%d²ãº¸·ìº¸½Ó", nLayerNo + 1);
+				 sHintInfo.Format("è·³è¿‡ç¬¬%då±‚ç„Šç¼ç„Šæ¥", nLayerNo + 1);
 				 continue;
 			 }
 		 }
 
-		 // ±éÀúº¸·ìË÷Òı£¬´ÓĞ¡µ½´ïÒÀ´Îº¸½Ó£¬ÏàÍ¬Ë÷Òı¿ÉÍ¬Ê±º¸½Ó
+		 // éå†ç„Šç¼ç´¢å¼•ï¼Œä»å°åˆ°è¾¾ä¾æ¬¡ç„Šæ¥ï¼Œç›¸åŒç´¢å¼•å¯åŒæ—¶ç„Šæ¥
 		 for (nWeldSeamIdx = 0; nWeldSeamIdx <= nMaxWeldSeamNum; nWeldSeamIdx++)
 		 {
 			 vpcThread.clear();
 			 for (int i = 0; i < vtWeldSeamInfoRobotA.size(); i++)
 			 {
-				 if (nWeldSeamIdx == vtWeldSeamInfoRobotA[i].tAtrribute.nWeldSeamIdx) // A´æÔÚº¸·ìË÷ÒınWeldSeamIdxµÄº¸·ì
+				 if (nWeldSeamIdx == vtWeldSeamInfoRobotA[i].tAtrribute.nWeldSeamIdx) // Aå­˜åœ¨ç„Šç¼ç´¢å¼•nWeldSeamIdxçš„ç„Šç¼
 				 {
 					 if (((nLayerNo >= 4) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotA[i]))) ||
 						 ((false == bFlatWeldEnabld) && (false == JudgeGrooveStandWeld(vtWeldSeamInfoRobotA[i]))) ||
-						 ((false == bStandWeldEnable) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotA[i])))) // Á¢º¸ËÄ²ãÒÔºó×Ô¶¯Ìø¹ı
+						 ((false == bStandWeldEnable) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotA[i])))) // ç«‹ç„Šå››å±‚ä»¥åè‡ªåŠ¨è·³è¿‡
 					 {
 						 break;
 					 }
-					 //ÒÑĞŞ¸Ä
-					 if ((TRUE == m_bNaturalPop) && (1 != XUI::MesBox::PopOkCancel("RobotA µÚ{0}µÀ º¸·ì{1} ¿ªÊ¼²âÁ¿º¸½Ó£¿È¡ÏûÌø¹ı£¡", nLayerNo + 1, nWeldSeamIdx + 1)/*XiMessageBox("RobotA µÚ%dµÀ º¸·ì%d ¿ªÊ¼²âÁ¿º¸½Ó£¿È¡ÏûÌø¹ı£¡", nLayerNo + 1, nWeldSeamIdx + 1)*/))
-					 //if ((TRUE == m_bNaturalPop) && (1 != XiMessageBox("RobotA µÚ%dµÀ º¸·ì%d ¿ªÊ¼²âÁ¿º¸½Ó£¿È¡ÏûÌø¹ı£¡", nLayerNo + 1, nWeldSeamIdx + 1)))
+					 //å·²ä¿®æ”¹
+					 if ((TRUE == m_bNaturalPop) && (1 != XUI::MesBox::PopOkCancel("RobotA ç¬¬{0}é“ ç„Šç¼{1} å¼€å§‹æµ‹é‡ç„Šæ¥ï¼Ÿå–æ¶ˆè·³è¿‡ï¼", nLayerNo + 1, nWeldSeamIdx + 1)/*XiMessageBox("RobotA ç¬¬%dé“ ç„Šç¼%d å¼€å§‹æµ‹é‡ç„Šæ¥ï¼Ÿå–æ¶ˆè·³è¿‡ï¼", nLayerNo + 1, nWeldSeamIdx + 1)*/))
+					 //if ((TRUE == m_bNaturalPop) && (1 != XiMessageBox("RobotA ç¬¬%dé“ ç„Šç¼%d å¼€å§‹æµ‹é‡ç„Šæ¥ï¼Ÿå–æ¶ˆè·³è¿‡ï¼", nLayerNo + 1, nWeldSeamIdx + 1)))
 					 {
 						 break;
 					 }					 
-					 // ¿ªÆô²âÁ¿º¸½ÓÏß³ÌA
-					 WriteLog("ÆÂ¿Úº¸½Ó£º»úÆ÷ÈËA µÚ%dµÀ º¸·ì%d Ïß³Ì¿ªÆô", nLayerNo, nWeldSeamIdx);
+					 // å¼€å¯æµ‹é‡ç„Šæ¥çº¿ç¨‹A
+					 WriteLog("å¡å£ç„Šæ¥ï¼šæœºå™¨äººA ç¬¬%dé“ ç„Šç¼%d çº¿ç¨‹å¼€å¯", nLayerNo, nWeldSeamIdx);
 					 T_ROBOT_THREAD* tRobot = new T_ROBOT_THREAD();
 					 tRobot->nGroupNo = i;
 					 tRobot->nLayerNo = nLayerNo;
@@ -7740,20 +7792,20 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 }
 			 for (int i = 0; i < vtWeldSeamInfoRobotB.size(); i++)
 			 {
-				 if (nWeldSeamIdx == vtWeldSeamInfoRobotB[i].tAtrribute.nWeldSeamIdx) // B´æÔÚº¸·ìË÷ÒınWeldSeamIdxµÄº¸·ì
+				 if (nWeldSeamIdx == vtWeldSeamInfoRobotB[i].tAtrribute.nWeldSeamIdx) // Bå­˜åœ¨ç„Šç¼ç´¢å¼•nWeldSeamIdxçš„ç„Šç¼
 				 {
 					 if (((nLayerNo >= 4) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotB[i]))) ||
 						 ((false == bFlatWeldEnabld) && (false == JudgeGrooveStandWeld(vtWeldSeamInfoRobotB[i]))) ||
-						 ((false == bStandWeldEnable) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotB[i])))) // Á¢º¸ËÄ²ãÒÔºó×Ô¶¯Ìø¹ı
+						 ((false == bStandWeldEnable) && (true == JudgeGrooveStandWeld(vtWeldSeamInfoRobotB[i])))) // ç«‹ç„Šå››å±‚ä»¥åè‡ªåŠ¨è·³è¿‡
 					 {
 						 break;
 					 }
-					 if ((TRUE == m_bNaturalPop) && (1 != XUI::MesBox::PopOkCancel("RobotB µÚ{0}µÀ º¸·ì{1} ¿ªÊ¼²âÁ¿º¸½Ó£¿È¡ÏûÌø¹ı£¡", nLayerNo + 1, nWeldSeamIdx + 1)))
+					 if ((TRUE == m_bNaturalPop) && (1 != XUI::MesBox::PopOkCancel("RobotB ç¬¬{0}é“ ç„Šç¼{1} å¼€å§‹æµ‹é‡ç„Šæ¥ï¼Ÿå–æ¶ˆè·³è¿‡ï¼", nLayerNo + 1, nWeldSeamIdx + 1)))
 					 {
 						 break;
 					 }
-					 // ¿ªÆô²âÁ¿º¸½ÓÏß³ÌB
-					 WriteLog("ÆÂ¿Úº¸½Ó£º»úÆ÷ÈËB µÚ%dµÀ º¸·ì%d Ïß³Ì¿ªÆô", nLayerNo, nWeldSeamIdx);
+					 // å¼€å¯æµ‹é‡ç„Šæ¥çº¿ç¨‹B
+					 WriteLog("å¡å£ç„Šæ¥ï¼šæœºå™¨äººB ç¬¬%dé“ ç„Šç¼%d çº¿ç¨‹å¼€å¯", nLayerNo, nWeldSeamIdx);
 					 T_ROBOT_THREAD* tRobot = new T_ROBOT_THREAD();
 					 tRobot->nGroupNo = i;
 					 tRobot->nLayerNo = nLayerNo;
@@ -7765,7 +7817,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 					 break;
 				 }
 			 }
-			 // µÈµ½Ïß³Ì½áÊø
+			 // ç­‰åˆ°çº¿ç¨‹ç»“æŸ
 			 for (int nNo = 0; nNo < vpcThread.size(); nNo++)
 			 {
 				 WaitForSingleObject(vpcThread[nNo]->m_hThread, INFINITE);
@@ -7773,7 +7825,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 }
 	 }
 	 KillTimer(99);
-	 XiMessageBox("º¸½ÓÍê³É");
+	 XiMessageBox("ç„Šæ¥å®Œæˆ");
 	 return true;
  }
 
@@ -7795,8 +7847,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  {
 	 CRobotDriverAdaptor* pRobotDriver = m_vpRobotDriver[nRobotNo];
 	 CUnit* pUnit = m_vpUnit[nRobotNo];
-	 // ´´½¨²¢³õÊ¼»¯¼Ó¾¢°åº¸½ÓÊµÀı
-	 WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ÎªÁË²»ĞŞÒÔÏÂ±äÁ¿Ãû
+	 // åˆ›å»ºå¹¶åˆå§‹åŒ–åŠ åŠ²æ¿ç„Šæ¥å®ä¾‹
+	 WAM::WeldAfterMeasure* pWeldAfterMeasure = NULL;// = m_pWeldAfterMeasure; // ä¸ºäº†ä¸ä¿®ä»¥ä¸‹å˜é‡å
 	 CHECK_BOOL_RETURN(CreateObject(m_tChoseWorkPieceType, m_vpUnit[nRobotNo], &pWeldAfterMeasure));
 	 pWeldAfterMeasure->SetRecoParam();
 	 pWeldAfterMeasure->SetHardware(m_vpScanInit[nRobotNo]);
@@ -7816,64 +7868,64 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 pWeldAfterMeasure->m_nLayerNo = pWeldAfterMeasure->m_nPauseLayerNo;
 	 }
 
-	 // º¸·ìÅÅĞò·Ö×é
-	 pUnit->m_sHintInfo.Format("º¸·ìĞÅÏ¢ÅÅĞò·Ö×é");
+	 // ç„Šç¼æ’åºåˆ†ç»„
+	 pUnit->m_sHintInfo.Format("ç„Šç¼ä¿¡æ¯æ’åºåˆ†ç»„");
 	 int nWeldGropuNum = 0;
 	 CHECK_BOOL_RETURN(pWeldAfterMeasure->WeldSeamGrouping(nWeldGropuNum));
 
-	 // ²âÁ¿ºÍº¸½Óº¸·ì
-	 pUnit->m_sHintInfo.Format("¼ÆËãµÚ%d×éº¸·ì²âÁ¿¹ì¼£¡­¡­", nGroupNo + 1);
+	 // æµ‹é‡å’Œç„Šæ¥ç„Šç¼
+	 pUnit->m_sHintInfo.Format("è®¡ç®—ç¬¬%dç»„ç„Šç¼æµ‹é‡è½¨è¿¹â€¦â€¦", nGroupNo + 1);
 	 vector<T_ROBOT_COORS> vtMeasureCoord;
 	 vector<T_ANGLE_PULSE> vtMeasurePulse;
 	 vector<int> vnMeasureType;
 	 double dExAxlePos = 0.0;
 
-	 // ²âÁ¿Êı¾İ²âÁ¿ÔË¶¯
-	 pUnit->m_sHintInfo.Format("µÚ%d×éº¸·ì²âÁ¿¹ì¼£¼ÆËãÖĞ ½ø¶È£º%d×é/¹²%d×é", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
-	 // »úÆ÷ÈË»ù×ùÖĞĞÄµ½´ó³µÖĞĞÄ¾àÀë
+	 // æµ‹é‡æ•°æ®æµ‹é‡è¿åŠ¨
+	 pUnit->m_sHintInfo.Format("ç¬¬%dç»„ç„Šç¼æµ‹é‡è½¨è¿¹è®¡ç®—ä¸­ è¿›åº¦ï¼š%dç»„/å…±%dç»„", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+	 // æœºå™¨äººåŸºåº§ä¸­å¿ƒåˆ°å¤§è½¦ä¸­å¿ƒè·ç¦»
 	 double dSafeHeight = 0.0;
 	 CHECK_BOOL_RETURN(pWeldAfterMeasure->CalcMeasureTrack(nGroupNo, vtMeasureCoord, vtMeasurePulse, vnMeasureType, dExAxlePos, dSafeHeight));
 
-	 // Íâ²¿ÖáÔË¶¯ Ö´ĞĞ²âÁ¿ÔË¶¯ Íâ²¿Öá Ïà»ú Í¼Ïñ´¦Àí¶ÔÏó
-	 pUnit->m_sHintInfo.Format("µÚ%d×éº¸·ì²âÁ¿ÖĞ ½ø¶È£º%d×é/¹²%d×é", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+	 // å¤–éƒ¨è½´è¿åŠ¨ æ‰§è¡Œæµ‹é‡è¿åŠ¨ å¤–éƒ¨è½´ ç›¸æœº å›¾åƒå¤„ç†å¯¹è±¡
+	 pUnit->m_sHintInfo.Format("ç¬¬%dç»„ç„Šç¼æµ‹é‡ä¸­ è¿›åº¦ï¼š%dç»„/å…±%dç»„", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 
-	 int nMaxMeasureLayerNo = 1; // µ÷Õû²âÁ¿¿ª¹Ø
-	 if (nLayerNo < nMaxMeasureLayerNo) // Ç°nMaxMeasureLayerNo²âÁ¿µ÷Õû
+	 int nMaxMeasureLayerNo = 1; // è°ƒæ•´æµ‹é‡å¼€å…³
+	 if (nLayerNo < nMaxMeasureLayerNo) // å‰nMaxMeasureLayerNoæµ‹é‡è°ƒæ•´
 	 {
 		 if (!GetLocalDebugMark())
 		 {
-			 //ÒÑĞŞ¸Ä
+			 //å·²ä¿®æ”¹
 			 if ((!pWeldAfterMeasure->m_ptUnit->m_bBreakPointContinue) && (!m_bNaturalPop ||
-				 IDOK == XUI::MesBox::PopOkCancel("¿ªÊ¼Ê¾½Ì!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")/*XiMessageBox("¿ªÊ¼Ê¾½Ì£¿\n!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")*/))
+				 IDOK == XUI::MesBox::PopOkCancel("å¼€å§‹ç¤ºæ•™!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")/*XiMessageBox("å¼€å§‹ç¤ºæ•™ï¼Ÿ\n!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")*/))
 			 /*
 			 if ((!pWeldAfterMeasure->m_ptUnit->m_bBreakPointContinue) && (!m_bNaturalPop ||
-				 IDOK == XiMessageBox("¿ªÊ¼Ê¾½Ì£¿\n!!!¿ÉÌø¹ıµ«±ØĞëÈ·±£ÓĞ²âÁ¿Êı¾İ!!!")))*/
+				 IDOK == XiMessageBox("å¼€å§‹ç¤ºæ•™ï¼Ÿ\n!!!å¯è·³è¿‡ä½†å¿…é¡»ç¡®ä¿æœ‰æµ‹é‡æ•°æ®!!!")))*/
 			 {
 				 long long lTimeS = XI_clock();
-				 //´ò¿ª¾µÆ¬·À»¤
+				 //æ‰“å¼€é•œç‰‡é˜²æŠ¤
 				 pUnit->SwitchIO("MeasureLensProtection", true);
 
 				 if (!pWeldAfterMeasure->DoTeach(nGroupNo, vtMeasurePulse, vnMeasureType, dExAxlePos, nLayerNo))
 				 {
-					 //¹Ø±Õ¾µÆ¬·À»¤
+					 //å…³é—­é•œç‰‡é˜²æŠ¤
 					 pUnit->SwitchIO("MeasureLensProtection", false);
 					 SaveGrooveData(nLayerNo, nGroupNo, pWeldAfterMeasure->m_pRobotDriver->m_strRobotName, false);
 					 if (E_STAND_SEAM == pWeldAfterMeasure->GetWeldSeamType(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]))
 					 {
-						 //ÒÑĞŞ¸Ä
-						 XUI::MesBox::PopInfo("{0}Á¢·å¡°²âÁ¿¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName.GetBuffer());
-						 //XiMessageBox("%s Á¢·å¡°²âÁ¿¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName);
+						 //å·²ä¿®æ”¹
+						 XUI::MesBox::PopInfo("{0}ç«‹å³°â€œæµ‹é‡â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName.GetBuffer());
+						 //XiMessageBox("%s ç«‹å³°â€œæµ‹é‡â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName);
 					 }
 					 return false;
 				 }
-				 //¹Ø±Õ¾µÆ¬·À»¤
+				 //å…³é—­é•œç‰‡é˜²æŠ¤
 				 pUnit->SwitchIO("MeasureLensProtection", false);
 				 SaveGrooveData(nLayerNo, nGroupNo, pWeldAfterMeasure->m_pRobotDriver->m_strRobotName, true);
 			 }
 			 else
 			 {
 				 double y;
-				 pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, y); // µ÷ÊÔÊ±ĞèÒªÉèÖÃ Êµ¼ÊÔËĞĞÊ±DoTeachÄÚ²¿ÉèÖÃ
+				 pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, y); // è°ƒè¯•æ—¶éœ€è¦è®¾ç½® å®é™…è¿è¡Œæ—¶DoTeachå†…éƒ¨è®¾ç½®
 				 CHECK_BOOL_RETURN(pWeldAfterMeasure->LoadTeachResult(nGroupNo, nLayerNo));
 			 }
 
@@ -7883,35 +7935,35 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 double y;
 			 //pWeldAfterMeasure->DoTeach(nGroupNo, vtMeasurePulse, vnMeasureType, dExAxlePos);
 			 CHECK_BOOL_RETURN(pWeldAfterMeasure->GeneralTeachResult(nGroupNo, vtMeasureCoord, vtMeasurePulse, vnMeasureType, dExAxlePos));
-			 pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, y); // µ÷ÊÔÊ±ĞèÒªÉèÖÃ Êµ¼ÊÔËĞĞÊ±DoTeachÄÚ²¿ÉèÖÃ
+			 pWeldAfterMeasure->SetTeachData(vtMeasurePulse, vnMeasureType, dExAxlePos, y); // è°ƒè¯•æ—¶éœ€è¦è®¾ç½® å®é™…è¿è¡Œæ—¶DoTeachå†…éƒ¨è®¾ç½®
 			 CHECK_BOOL_RETURN(pWeldAfterMeasure->LoadTeachResult(nGroupNo, nLayerNo));
 		 }
 
-		 // ¼ÆËãº¸µÀ
-		 pUnit->m_sHintInfo.Format("µÚ%d×éº¸·ìº¸½Ó¹ì¼£¼ÆËãÖĞ ½ø¶È£º%d×é/¹²%d×é", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+		 // è®¡ç®—ç„Šé“
+		 pUnit->m_sHintInfo.Format("ç¬¬%dç»„ç„Šç¼ç„Šæ¥è½¨è¿¹è®¡ç®—ä¸­ è¿›åº¦ï¼š%dç»„/å…±%dç»„", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 		 if (!pWeldAfterMeasure->CalcWeldTrack(nGroupNo))
 		 {
 			 if (E_STAND_SEAM == pWeldAfterMeasure->GetWeldSeamType(pWeldAfterMeasure->m_vvtWeldSeamGroup[nGroupNo][0]))
 			 {
-				 //ÒÑĞŞ¸Ä
-				 XUI::MesBox::PopInfo("{0}Á¢·å¡°¼ÆËã¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName.GetBuffer());
-				// XiMessageBox("%s Á¢·å¡°¼ÆËã¡±Ê§°Ü£¬¼ÌĞøÆäËûº¸·ìº¸½Ó", pRobotDriver->m_strRobotName);
+				 //å·²ä¿®æ”¹
+				 XUI::MesBox::PopInfo("{0}ç«‹å³°â€œè®¡ç®—â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName.GetBuffer());
+				// XiMessageBox("%s ç«‹å³°â€œè®¡ç®—â€å¤±è´¥ï¼Œç»§ç»­å…¶ä»–ç„Šç¼ç„Šæ¥", pRobotDriver->m_strRobotName);
 			 }
 			 return false;
 		 }
 	 }
 
-	 // Ö´ĞĞº¸½Ó
-	 pUnit->m_sHintInfo.Format("µÚ%d×éº¸·ìº¸½ÓÖĞ¡­¡­ ½ø¶È£º%d×é/¹²%d×é", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
+	 // æ‰§è¡Œç„Šæ¥
+	 pUnit->m_sHintInfo.Format("ç¬¬%dç»„ç„Šç¼ç„Šæ¥ä¸­â€¦â€¦ è¿›åº¦ï¼š%dç»„/å…±%dç»„", nGroupNo + 1, nGroupNo + 1, nWeldGropuNum);
 	 if (!WeldSchedule_G(pWeldAfterMeasure, nGroupNo, nLayerNo))
 	 {
 		 return false;
 	 }
 
-	 // ÔË¶¯Íâ²¿Öáµ½°²È«Î»ÖÃ ½ÓÍ·²âÊÔÁÙÊ±È¥³ı
+	 // è¿åŠ¨å¤–éƒ¨è½´åˆ°å®‰å…¨ä½ç½® æ¥å¤´æµ‹è¯•ä¸´æ—¶å»é™¤
 	 pUnit->MoveExAxleToSafe();
 
-	 // Ì§Ç¹
+	 // æŠ¬æª
 	 if (!GetLocalDebugMark())
 	 {
 		 T_ANGLE_PULSE tBackPulse = pRobotDriver->m_tHomePulse;
@@ -7937,7 +7989,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 }
 
 
-	 pUnit->m_sHintInfo.Format("º¸½Ó×÷Òµ½áÊø");
+	 pUnit->m_sHintInfo.Format("ç„Šæ¥ä½œä¸šç»“æŸ");
 	 return true;
  }
 
@@ -7977,7 +8029,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 CheckFileExists(strMeasurePos, true);
 	 CheckFileExists(strRealPos, true);
 
-	 if (IDOK != XiMessageBox("È·ÈÏÊı¾İÎÄ¼ş¶¼ÒÑ±£´æ£¿"))
+	 if (IDOK != XiMessageBox("ç¡®è®¤æ•°æ®æ–‡ä»¶éƒ½å·²ä¿å­˜ï¼Ÿ"))
 	 {
 		 return;
 	 }
@@ -8154,18 +8206,18 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 double dAverageError = dMinDis / double(nPointNum);
 	 CString sResult;
-	 sResult.Format("Æ½¾ùÎó²î£º%11.3lf\n X ²¹³¥£º%11.3lf\n Y ²¹³¥£º%11.3lf\n Z ²¹³¥£º%11.3lf", dAverageError, dMinXAdjust, dMinYAdjust, dMinZAdjust);
+	 sResult.Format("å¹³å‡è¯¯å·®ï¼š%11.3lf\n X è¡¥å¿ï¼š%11.3lf\n Y è¡¥å¿ï¼š%11.3lf\n Z è¡¥å¿ï¼š%11.3lf", dAverageError, dMinXAdjust, dMinYAdjust, dMinZAdjust);
 	 if (dAverageError < 0.5)
 	 {
-		 XiMessageBox("ÊÖÑÛĞ£Ñé½á¹ûÁ¼ºÃ£¡\n" + sResult);
+		 XiMessageBox("æ‰‹çœ¼æ ¡éªŒç»“æœè‰¯å¥½ï¼\n" + sResult);
 	 }
 	 else if (dAverageError < 1.0)
 	 {
-		 XiMessageBox("ÊÖÑÛĞ£Ñé½á¹ûÒ»°ã£¡\n" + sResult);
+		 XiMessageBox("æ‰‹çœ¼æ ¡éªŒç»“æœä¸€èˆ¬ï¼\n" + sResult);
 	 }
 	 else
 	 {
-		 XiMessageBox("ÊÖÑÛĞ£Ñé½á¹û·Ç³£²î£¬Çë¼ì²éÊı¾İÊÇ·ñÕıÈ·£¡\n" + sResult);
+		 XiMessageBox("æ‰‹çœ¼æ ¡éªŒç»“æœéå¸¸å·®ï¼Œè¯·æ£€æŸ¥æ•°æ®æ˜¯å¦æ­£ç¡®ï¼\n" + sResult);
 	 }
 
 	 vtAbsPosInBase.clear();
@@ -8230,8 +8282,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButton2()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë	
-	 WriteLog("µ¥»÷£ºÆÂ¿Ú²ÎÊı");
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 	
+	 WriteLog("å•å‡»ï¼šå¡å£å‚æ•°");
 	 ChangeGroovePara cWeldParamProcess;
 	 cWeldParamProcess.DoModal();
 	 return;
@@ -8240,8 +8292,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnBnClickedButton3()
  {
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
-	 WriteLog("µ¥»÷£ºÆÂ¿Úº¸½Ó");
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
+	 WriteLog("å•å‡»ï¼šå¡å£ç„Šæ¥");
 	 AfxBeginThread(ThreadGrooveTeachWeld, this);
 	 return;
 	 /*
@@ -8249,25 +8301,25 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 int dirRobot = -1;
 	 vector<T_WAVE_PARA> vtTWavePara;
 	 vector<T_INFOR_WAVE_RAND> vtGrooveRand;
-	 //»ñÈ¡ÆğÖÕµãÊı¾İ
+	 //è·å–èµ·ç»ˆç‚¹æ•°æ®
 	 T_ROBOT_COORS tRobotStartCoord = { 100,100,0,180,45,0,0,0,0 };
 	 T_ROBOT_COORS tRobotEndCoord = { 100,100,-100,0,0,0,0,0,0 };
 	 GetTeachPos(tRobotStartCoord, tRobotEndCoord, nRobotNo);
 	 if (0 != GetGroovePara(tRobotStartCoord, tRobotEndCoord, vtTWavePara))
 	 {
-		 XiMessageBox("»ñÈ¡°Ú»¡²ÎÊıÊ§°Ü");
+		 XiMessageBox("è·å–æ‘†å¼§å‚æ•°å¤±è´¥");
 	 }
-	 // TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	 // 
 	 T_GROOVE_INFOR tGrooveInfor;
-	 //ÊÓ¾õ´¦Àíº¯Êı£¬×îºó²ÎÊı»¹Î´ÕûÀí£¬Ä¿Ç°Ö»¿ÉÒÔÓÃÀ´²âÊÔÊÓ¾õ¹¦ÄÜ
-	 //if (MB_OK == XiMessageBox("ÊÇ·ñ½øĞĞÉ¨Ãè"))
+	 //è§†è§‰å¤„ç†å‡½æ•°ï¼Œæœ€åå‚æ•°è¿˜æœªæ•´ç†ï¼Œç›®å‰åªå¯ä»¥ç”¨æ¥æµ‹è¯•è§†è§‰åŠŸèƒ½
+	 //if (MB_OK == XiMessageBox("æ˜¯å¦è¿›è¡Œæ‰«æ"))
 	 //{
 		// ScanGrooveInfo(tRobotStartCoord, tRobotEndCoord, nRobotNo, tGrooveInfor);
 	 //}
 
 
-	 //×Ô¶¯ÅÅµÀ
+	 //è‡ªåŠ¨æ’é“
 	 tGrooveInfor.weldAngle = tRobotStartCoord.dRZ;
 	 tGrooveInfor.dPlateThickness = 20.0;
 	 tGrooveInfor.dStartLowerFace = 12.0;
@@ -8284,7 +8336,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 vector<double> weldSpeedRate;
 	 vector<vector<T_ROBOT_COORS>> vvtGrooveWavePath;
 	 vector<vector<double>> vWeldSpeedRate;
-	 //¼ÆËã°Ú»¡¹ì¼£
+	 //è®¡ç®—æ‘†å¼§è½¨è¿¹
 	 for (size_t i = 0; i < vtGrooveRand.size(); i++)
 	 {
 		 vtGrooveWavePath.clear();
@@ -8306,21 +8358,21 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 fclose(pf);
 
 	 }
-	 //º¸½Ó
+	 //ç„Šæ¥
 	 if (0 == GrooveWeld(vvtGrooveWavePath, vtTWavePara, vWeldSpeedRate, nRobotNo))
 	 {
-		 MessageBox("º¸½Ó³É¹¦");
+		 MessageBox("ç„Šæ¥æˆåŠŸ");
 	 }
 	 else
 	 {
-		 MessageBox("º¸½ÓÊ§°Ü");
+		 MessageBox("ç„Šæ¥å¤±è´¥");
 	 }*/
  }
 
 
  void CAssemblyWeld::OnPaint()
  {
-	 // TODO: ÔÚ´Ë´¦Ìí¼ÓÏûÏ¢´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤å¤„æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç 
 	 if (IsIconic())
 	 {
 		 CPaintDC dc(this); // device context for painting
@@ -8341,7 +8393,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 else
 	 {
 		 CPaintDC dc(this); // device context for painting
-		 // ²»Îª»æÍ¼ÏûÏ¢µ÷ÓÃ CDialog::OnPaint()
+		 // ä¸ä¸ºç»˜å›¾æ¶ˆæ¯è°ƒç”¨ CDialog::OnPaint()
 		 CRect rect;
 		 GetClientRect(&rect);
 		 CDC dcMem;
@@ -8351,7 +8403,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 BITMAP bitmap;
 		 bmpBackground.GetBitmap(&bitmap);
 		 CBitmap* pbmpOld = dcMem.SelectObject(&bmpBackground);
-		 dc.SetStretchBltMode(HALFTONE);             //*Ìí¼ÓÓÚ´Ë
+		 dc.SetStretchBltMode(HALFTONE);             //*æ·»åŠ äºæ­¤
 		 dc.StretchBlt(0, 0, rect.Width(), rect.Height(), &dcMem, 0, 0, bitmap.bmWidth, bitmap.bmHeight, SRCCOPY);
 	 }
  }
@@ -8359,16 +8411,16 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
  {
-	 // TODO: ÔÚ´ËÌí¼ÓÏûÏ¢´¦Àí³ÌĞò´úÂëºÍ/»òµ÷ÓÃÄ¬ÈÏÖµ
+	 // TODO: åœ¨æ­¤æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç å’Œ/æˆ–è°ƒç”¨é»˜è®¤å€¼
 
 	 CDialog::OnDrawItem(nIDCtl, lpDrawItemStruct);
 
 	 CDC dc;
-	 dc.Attach(lpDrawItemStruct->hDC);//µÃµ½»æÖÆµÄÉè±¸»·¾³CDC
+	 dc.Attach(lpDrawItemStruct->hDC);//å¾—åˆ°ç»˜åˆ¶çš„è®¾å¤‡ç¯å¢ƒCDC
 	 ASSERT(lpDrawItemStruct->CtlType == ODT_BUTTON);
 	 CString strText;
 	 ((CButton*)GetDlgItem(nIDCtl))->GetWindowText(strText);
-	 SetBkMode(lpDrawItemStruct->hDC, TRANSPARENT);//Í¸Ã÷
+	 SetBkMode(lpDrawItemStruct->hDC, TRANSPARENT);//é€æ˜
 	 if (nIDCtl == IDC_BUTTON_SPARE4 || nIDCtl == IDC_BUTTON_SYSTEM_PARA2 || nIDCtl == IDC_BUTTON_ADVANCED_CONTINUE
 		 || nIDCtl == IDC_BUTTON_START || nIDCtl == IDC_BUTTON_TABLE_PARA2 || nIDCtl == IDC_BUTTON_LOAD_TRACK
 		 || nIDCtl == IDC_BUTTON_SYSTEM_PARA || nIDCtl == IDC_BUTTON_SPARE1 || nIDCtl == IDC_BUTTON_COMMONLY_USED_IO
@@ -8380,39 +8432,39 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 || nIDCtl == IDC_RADIO_ARC || nIDCtl == IDC_RADIO_NOARC
 		 || nIDCtl == IDC_CHECK3 || nIDCtl == IDC_CHECK_GRAY2 || nIDCtl == IDC_CHECK_NATURAL_POP)
 	 {
-		 if (GetDlgItem(nIDCtl)->IsWindowEnabled())  //µ±°´Å¥²»²Ù×÷ & °´Å¥¿ÉÓÃ
+		 if (GetDlgItem(nIDCtl)->IsWindowEnabled())  //å½“æŒ‰é’®ä¸æ“ä½œ & æŒ‰é’®å¯ç”¨
 		 {
-			 CBrush brush(RGB(173, 215, 255));    //ÄÚ±³¾°»­Ë¢ 30, 200, 255
-			 CPen m_BoundryPen(0, 2, RGB(80, 80, 80));   //±ß¿ò»­±Ê
-			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //´ó±³¾°»­Ë¢ 173, 215, 255   140, 200, 255
-			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//ÀûÓÃ»­Ë¢brush£¬Ìî³ä´ó¾ØĞÎ¿ò	
+			 CBrush brush(RGB(173, 215, 255));    //å†…èƒŒæ™¯ç”»åˆ· 30, 200, 255
+			 CPen m_BoundryPen(0, 2, RGB(80, 80, 80));   //è¾¹æ¡†ç”»ç¬”
+			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //å¤§èƒŒæ™¯ç”»åˆ· 173, 215, 255   140, 200, 255
+			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//åˆ©ç”¨ç”»åˆ·brushï¼Œå¡«å……å¤§çŸ©å½¢æ¡†	
 			 CRect rect = lpDrawItemStruct->rcItem;
 			 CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 			 POINT pt;
-			 //»­°´Å¥µÄÍâ±ß¿ò£¬ËüÊÇÒ»¸ö°ë¾¶Îª10µÄÔ²½Ç¾ØĞÎ
+			 //ç”»æŒ‰é’®çš„å¤–è¾¹æ¡†ï¼Œå®ƒæ˜¯ä¸€ä¸ªåŠå¾„ä¸º10çš„åœ†è§’çŸ©å½¢
 			 pt.x = 10;
 			 pt.y = 10;
 			 CPen* hOldPen = pDC->SelectObject(&m_BoundryPen);
 			 pDC->RoundRect(&rect, pt);
 			 pDC->SelectObject(hOldPen);
-			 rect.DeflateRect(3, 3, 3, 3);   //Ëõ½ø
+			 rect.DeflateRect(3, 3, 3, 3);   //ç¼©è¿›
 			 CBrush* pOldBrush = pDC->SelectObject(&m_BackgroundBrush);
-			 pDC->Rectangle(rect);    //»­¾ØĞÎ
+			 pDC->Rectangle(rect);    //ç”»çŸ©å½¢
 			 pDC->SelectObject(pOldBrush);
-			 pDC->FillRect(rect, &brush);    //Ìî³äÄÚ¾ØĞÎ
-			 //ÒòÎªÕâÀï½øĞĞÁËÖØ»æ,ËùÒÔÎÄ×ÖÒ²ÒªÖØ»æ
+			 pDC->FillRect(rect, &brush);    //å¡«å……å†…çŸ©å½¢
+			 //å› ä¸ºè¿™é‡Œè¿›è¡Œäº†é‡ç»˜,æ‰€ä»¥æ–‡å­—ä¹Ÿè¦é‡ç»˜
 			 DrawText(lpDrawItemStruct->hDC, strText, strText.GetLength(), &lpDrawItemStruct->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
 		 }
-		 if (lpDrawItemStruct->itemState & ODS_SELECTED & GetDlgItem(nIDCtl)->IsWindowEnabled())    //Èç¹û°´Å¥¿ÉÓÃ & µã»÷
+		 if (lpDrawItemStruct->itemState & ODS_SELECTED & GetDlgItem(nIDCtl)->IsWindowEnabled())    //å¦‚æœæŒ‰é’®å¯ç”¨ & ç‚¹å‡»
 		 {
-			 CBrush brush(RGB(0, 160, 230));    //ÄÚ±³¾°»­Ë¢ 0, 160, 230
-			 CPen m_BoundryPen(0, 1, RGB(80, 80, 80));   //±ß¿ò»­±Ê
-			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //´ó±³¾°»­Ë¢ 140, 200, 255
-			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//ÀûÓÃ»­Ë¢brush£¬Ìî³ä¾ØĞÎ¿ò	
+			 CBrush brush(RGB(0, 160, 230));    //å†…èƒŒæ™¯ç”»åˆ· 0, 160, 230
+			 CPen m_BoundryPen(0, 1, RGB(80, 80, 80));   //è¾¹æ¡†ç”»ç¬”
+			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //å¤§èƒŒæ™¯ç”»åˆ· 140, 200, 255
+			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//åˆ©ç”¨ç”»åˆ·brushï¼Œå¡«å……çŸ©å½¢æ¡†	
 			 CRect rect = lpDrawItemStruct->rcItem;
 			 CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 			 POINT pt;
-			 //»­°´Å¥µÄÍâ±ß¿ò£¬ËüÊÇÒ»¸ö°ë¾¶Îª5µÄÔ²½Ç¾ØĞÎ
+			 //ç”»æŒ‰é’®çš„å¤–è¾¹æ¡†ï¼Œå®ƒæ˜¯ä¸€ä¸ªåŠå¾„ä¸º5çš„åœ†è§’çŸ©å½¢
 			 pt.x = 10;
 			 pt.y = 10;
 			 CPen* hOldPen = pDC->SelectObject(&m_BoundryPen);
@@ -8423,19 +8475,19 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 pDC->Rectangle(rect);
 			 pDC->SelectObject(pOldBrush);
 			 pDC->FillRect(rect, &brush);
-			 //ÒòÎªÕâÀï½øĞĞÁËÖØ»æ,ËùÒÔÎÄ×ÖÒ²ÒªÖØ»æ
+			 //å› ä¸ºè¿™é‡Œè¿›è¡Œäº†é‡ç»˜,æ‰€ä»¥æ–‡å­—ä¹Ÿè¦é‡ç»˜
 			 DrawText(lpDrawItemStruct->hDC, strText, strText.GetLength(), &lpDrawItemStruct->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
 		 }
-		 if (!GetDlgItem(nIDCtl)->IsWindowEnabled())    //²»¿ÉÓÃ£¬ÏÔÊ¾»ÒÉ«
+		 if (!GetDlgItem(nIDCtl)->IsWindowEnabled())    //ä¸å¯ç”¨ï¼Œæ˜¾ç¤ºç°è‰²
 		 {
-			 CBrush brush(RGB(190, 190, 200));    //ÄÚ±³¾°»­Ë¢
-			 CPen m_BoundryPen(0, 2, RGB(80, 80, 80));   //±ß¿ò»­±Ê
-			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //´ó±³¾°»­Ë¢
-			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//ÀûÓÃ»­Ë¢brush£¬Ìî³ä¾ØĞÎ¿ò	
+			 CBrush brush(RGB(190, 190, 200));    //å†…èƒŒæ™¯ç”»åˆ·
+			 CPen m_BoundryPen(0, 2, RGB(80, 80, 80));   //è¾¹æ¡†ç”»ç¬”
+			 CBrush m_BackgroundBrush = RGB(140, 200, 255);    //å¤§èƒŒæ™¯ç”»åˆ·
+			 dc.FillRect(&(lpDrawItemStruct->rcItem), &m_BackgroundBrush);//åˆ©ç”¨ç”»åˆ·brushï¼Œå¡«å……çŸ©å½¢æ¡†	
 			 CRect rect = lpDrawItemStruct->rcItem;
 			 CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 			 POINT pt;
-			 //»­°´Å¥µÄÍâ±ß¿ò£¬ËüÊÇÒ»¸ö°ë¾¶Îª5µÄÔ²½Ç¾ØĞÎ
+			 //ç”»æŒ‰é’®çš„å¤–è¾¹æ¡†ï¼Œå®ƒæ˜¯ä¸€ä¸ªåŠå¾„ä¸º5çš„åœ†è§’çŸ©å½¢
 			 pt.x = 10;
 			 pt.y = 10;
 			 CPen* hOldPen = pDC->SelectObject(&m_BoundryPen);
@@ -8446,8 +8498,8 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 			 pDC->Rectangle(rect);
 			 pDC->SelectObject(pOldBrush);
 			 pDC->FillRect(rect, &brush);
-			 //ÒòÎªÕâÀï½øĞĞÁËÖØ»æ,ËùÒÔÎÄ×ÖÒ²ÒªÖØ»æ
-			 pDC->SetTextColor(RGB(255, 255, 255)); //ÉèÖÃÎÄ±¾ÑÕÉ«
+			 //å› ä¸ºè¿™é‡Œè¿›è¡Œäº†é‡ç»˜,æ‰€ä»¥æ–‡å­—ä¹Ÿè¦é‡ç»˜
+			 pDC->SetTextColor(RGB(255, 255, 255)); //è®¾ç½®æ–‡æœ¬é¢œè‰²
 			 DrawText(lpDrawItemStruct->hDC, strText, strText.GetLength(), &lpDrawItemStruct->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
 		 }
 		 dc.Detach();
@@ -8456,10 +8508,10 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void WeldAfterMeasure::DelPngFile(const CString& directory)
  {
-	 // ¹¹ÔìÎÄ¼şÆ¥ÅäÄ£Ê½
+	 // æ„é€ æ–‡ä»¶åŒ¹é…æ¨¡å¼
 	 CString pattern = directory + _T("\\*.png");
 
-	 // Ê¹ÓÃ FindFirstFile ºÍ FindNextFile ±éÀúÎÄ¼ş
+	 // ä½¿ç”¨ FindFirstFile å’Œ FindNextFile éå†æ–‡ä»¶
 	 WIN32_FIND_DATA findData;
 	 HANDLE hFind = FindFirstFile(pattern, &findData);
 
@@ -8467,20 +8519,20 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 do {
 			 CString filePath = directory + _T("\\") + findData.cFileName;
 			 try {
-				 // É¾³ıÎÄ¼ş
+				 // åˆ é™¤æ–‡ä»¶
 				 remove(filePath);
 				 Sleep(100);
-				 WriteLog("È¥³ıµãÔÆ±³¾°É¾³ı:%s", filePath);
+				 WriteLog("å»é™¤ç‚¹äº‘èƒŒæ™¯åˆ é™¤:%s", filePath);
 
 			 }
 			 catch (...) {
-				 WriteLog("È¥³ıµãÔÆ±³¾°É¾³ıÊ§°Ü:%s", filePath);
+				 WriteLog("å»é™¤ç‚¹äº‘èƒŒæ™¯åˆ é™¤å¤±è´¥:%s", filePath);
 			 }
 		 } while (FindNextFile(hFind, &findData));
 		 FindClose(hFind);
 	 }
 	 else {
-		 WriteLog("È¥³ıµãÔÆ±³¾°ÖĞÃ»ÓĞpngÎÄ¼ş²»ÓÃÉ¾³ı");
+		 WriteLog("å»é™¤ç‚¹äº‘èƒŒæ™¯ä¸­æ²¡æœ‰pngæ–‡ä»¶ä¸ç”¨åˆ é™¤");
 	 }
  }
 
@@ -8501,7 +8553,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::initWorkpieceType()
  {
-	 //¶ÁÈ¡ÏÖÔÚÒÑÓĞµÄ¹¤¼şÀàĞÍ
+	 //è¯»å–ç°åœ¨å·²æœ‰çš„å·¥ä»¶ç±»å‹
 	 m_vsWorkpieceType = findSubfolder(".\\ConfigFiles\\WorkpieceType\\");
 	 for (size_t i = 0; i < m_vsWorkpieceType.size(); i++)
 	 {
@@ -8509,19 +8561,19 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 		 m_vsWorkpieceType[i] = m_vsWorkpieceType[i].Right(m_vsWorkpieceType[i].GetLength() - nStringNo);
 	 }
 
-	 //¶ÁÈ¡ÉÏ´ÎÊ¹ÓÃµÄ¹¤¼şÀàĞÍ
+	 //è¯»å–ä¸Šæ¬¡ä½¿ç”¨çš„å·¥ä»¶ç±»å‹
 	 CString sWorkpieceName;
 	 XiBase::COPini opini;
 	 opini.SetFileName(".\\ConfigFiles\\WorkpieceType\\Chioce.ini");
 	 opini.SetSectionName("CurChioce");
 	 opini.ReadString("WorkpieceName", sWorkpieceName);
 
-	 //ÉèÖÃÑ¡Ïî
+	 //è®¾ç½®é€‰é¡¹
 	 int nCurNo = 0;
 	 m_comboWorkpieceType.ResetContent();
 	 for (size_t i = 0; i < m_vsWorkpieceType.size(); i++)
 	 {
-		 //ÒÑĞŞ¸Ä
+		 //å·²ä¿®æ”¹
 		 sWorkpieceName = XUI::Languge::GetInstance().translate(sWorkpieceName);
 		 m_vsWorkpieceType[i] = XUI::Languge::GetInstance().translate(m_vsWorkpieceType[i].GetBuffer());
 
@@ -8538,18 +8590,18 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::setWorkpieceType(int nTypeNo)
  {
-	 //±£´æµ±Ç°Ê¹ÓÃµÄ¹¤¼şÀàĞÍ
+	 //ä¿å­˜å½“å‰ä½¿ç”¨çš„å·¥ä»¶ç±»å‹
 	 CString sWorkpieceName;
 	 XiBase::COPini opini;
 	 opini.SetFileName(".\\ConfigFiles\\WorkpieceType\\Chioce.ini");
 	 opini.SetSectionName("CurChioce");
 	 opini.WriteString("WorkpieceName", m_vsWorkpieceType[nTypeNo]);
 
-	 //¼ÓÔØRunPara
+	 //åŠ è½½RunPara
 	 RunPara::GetInstance().setCustomParaFileName(".\\ConfigFiles\\WorkpieceType\\" + m_vsWorkpieceType[nTypeNo] + "\\RunPara.ini");
 	 RunPara::GetInstance().loadAllPara();
 
-	 //Ìæ»»ÎÄ¼ş
+	 //æ›¿æ¢æ–‡ä»¶
 	 CString sSrcFile = ".\\ConfigFiles\\WorkpieceType\\" + m_vsWorkpieceType[nTypeNo] + "\\Get_Welding_Info.ini";
 	 CString sDstFile = ".\\LocalFiles\\ExLib\\Vision\\ConfigFiles\\Get_Welding_Info.ini";
 	 CopyFile(sSrcFile, sDstFile, FALSE);
@@ -8560,7 +8612,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
  void CAssemblyWeld::OnCbnSelchangeWorkpieceType2()
  {
-	 //»ñÈ¡µ±Ç°µÄÑ¡Ôñ
+	 //è·å–å½“å‰çš„é€‰æ‹©
 	 UpdateData(TRUE);
 	 auto nTypeNo = m_comboWorkpieceType.GetCurSel();
 	 if (nTypeNo < 0 || nTypeNo >= m_vsWorkpieceType.size())
@@ -8578,11 +8630,11 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 
 	 if (m_nUseModel)
 	 {
-		 WriteLog("µ¥»÷£ºÊ¹ÓÃÄ£ĞÍ");
+		 WriteLog("å•å‡»ï¼šä½¿ç”¨æ¨¡å‹");
 	 }
 	 else
 	 {
-		 WriteLog("µ¥»÷£º²»Ê¹ÓÃÄ£ĞÍ");
+		 WriteLog("å•å‡»ï¼šä¸ä½¿ç”¨æ¨¡å‹");
 	 }
  }
 
@@ -8591,42 +8643,42 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 UpdateData(TRUE);
 	 int nScanTimes = m_comboScanTimes.GetCurSel() + 1;
 	 SetLineScanTimes(nScanTimes);
-	 WriteLog("Ñ¡ÔñÉ¨Ãè´ÎÊı£º%d", nScanTimes);
+	 WriteLog("é€‰æ‹©æ‰«ææ¬¡æ•°ï¼š%d", nScanTimes);
  }
 
 
  void CAssemblyWeld::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
  {
 	 int nSel = m_tab.GetCurSel();
-	 // ÎªÁË±ÜÃâÅ¼·¢¸²¸ÇÎÊÌâ£¬ÏÈÈ«²¿Òş²Ø
+	 // ä¸ºäº†é¿å…å¶å‘è¦†ç›–é—®é¢˜ï¼Œå…ˆå…¨éƒ¨éšè—
 	 m_pagePieceType->ShowWindow(SW_HIDE);
 	 m_pageScan->ShowWindow(SW_HIDE);
 	 m_pageWeld->ShowWindow(SW_HIDE);
 
-	 // ¼ÆËã¿Í»§Çø£¨·ÀÖ¹¶àÏÔÊ¾Æ÷/DPI ±ä¶¯ºó´óĞ¡²»Ò»ÖÂ£©
+	 // è®¡ç®—å®¢æˆ·åŒºï¼ˆé˜²æ­¢å¤šæ˜¾ç¤ºå™¨/DPI å˜åŠ¨åå¤§å°ä¸ä¸€è‡´ï¼‰
 	 CRect rc;
 	 m_tab.GetClientRect(&rc);
 	 m_tab.AdjustRect(FALSE, &rc);
 	 auto place = [&](CWnd* p) {
 		 p->SetWindowPos(&CWnd::wndTop, rc.left, rc.top, rc.Width(), rc.Height(),
-			 SWP_SHOWWINDOW);   // ²»ÓÃ NOZORDER£¬Ö±½ÓÌáµ½×îÇ°
+			 SWP_SHOWWINDOW);   // ä¸ç”¨ NOZORDERï¼Œç›´æ¥æåˆ°æœ€å‰
 		 p->BringWindowToTop();
 		 p->SetFocus();
 		 };
 
 	 switch (nSel)
 	 {
-	 case 0: // ¹¹¼ş
+	 case 0: // æ„ä»¶
 		 place(m_pagePieceType);
-		 m_pageScan->DeactivatePage();   // Àë¿ª CAM
+		 m_pageScan->DeactivatePage();   // ç¦»å¼€ CAM
 		 break;
 	 case 1: // CAM
 		 place(m_pageScan);
 		 m_pageScan->ActivatePage();
 		 break;
-	 case 2: // º¸½Ó
+	 case 2: // ç„Šæ¥
 		 place(m_pageWeld);
-		 m_pageScan->DeactivatePage();   // Àë¿ª CAM
+		 m_pageScan->DeactivatePage();   // ç¦»å¼€ CAM
 		 break;
 	 default:
 		 place(m_pagePieceType);
@@ -8642,21 +8694,21 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
 	 if (::IsWindow(m_hBlockTop))
 		 return;
 
-	 // ¼ÆËã tab µÄÄÚÈİÇø£¨È¥µô tab Í·£©
+	 // è®¡ç®— tab çš„å†…å®¹åŒºï¼ˆå»æ‰ tab å¤´ï¼‰
 	 CRect rcTab;
 	 m_tab.GetClientRect(&rcTab);
 	 m_tab.AdjustRect(FALSE, &rcTab);
 
 	 m_hBlockTop = ::CreateWindowEx(
-		 0,                  // ²»ĞèÒª TOPMOST ÁË£¬child »á±»²Ã¼ôÔÚ tab ÄÚ
+		 0,                  // ä¸éœ€è¦ TOPMOST äº†ï¼Œchild ä¼šè¢«è£å‰ªåœ¨ tab å†…
 		 kCamBlockClass,
 		 _T(""),
 		 WS_CHILD | WS_VISIBLE,
 		 rcTab.left,
 		 rcTab.top,
 		 rcTab.Width(),
-		 rcTab.Height(),     // Èç¹ûÖ»Ïëµ²Ò»²¿·Ö£¬¿ÉÒÔ×Ô¼º¸Ä³É coverHeight
-		 m_tab.GetSafeHwnd(),// ¡ï ¸¸´°¿Ú = tab ¿Ø¼ş
+		 rcTab.Height(),     // å¦‚æœåªæƒ³æŒ¡ä¸€éƒ¨åˆ†ï¼Œå¯ä»¥è‡ªå·±æ”¹æˆ coverHeight
+		 m_tab.GetSafeHwnd(),// â˜… çˆ¶çª—å£ = tab æ§ä»¶
 		 nullptr,
 		 AfxGetInstanceHandle(),
 		 nullptr
@@ -8667,7 +8719,7 @@ bool CAssemblyWeld::JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo)
  {
 	 CDialog::OnSize(nType, cx, cy);
 
-	 // TODO: ÔÚ´Ë´¦Ìí¼ÓÏûÏ¢´¦Àí³ÌĞò´úÂë
+	 // TODO: åœ¨æ­¤å¤„æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç 
 	 if (!::IsWindow(m_tab.GetSafeHwnd()) ||
 		 !::IsWindow(m_hBlockTop))
 		 return;

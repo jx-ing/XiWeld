@@ -28,7 +28,7 @@
 //#include "StiffenPlate.h"
 //#include "PurlinHanger.h"
 //#include "DiaphragmWeld.h"
-//#include"NamedPipeClient.h" //ºèÂ·ÁÙÊ±Ê¹ÓÃ ÓĞÃû¹ÜµÀ
+//#include"NamedPipeClient.h" //é¸¿è·¯ä¸´æ—¶ä½¿ç”¨ æœ‰åç®¡é“
 
 
 #include "ChangeGroovePara.h"
@@ -40,7 +40,7 @@ class CShowCAM;
 class WorkPieceType;
 class CWeldPage;
 
-// ·ÅÔÚ CShowCAM.cpp µÄ×îÉÏÃæ¡¢include Ö®ºó
+// æ”¾åœ¨ CShowCAM.cpp çš„æœ€ä¸Šé¢ã€include ä¹‹å
 LRESULT CALLBACK CamBlockBarProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static const TCHAR* kCamBlockClass = _T("CamBlockBarClass");
 
@@ -48,7 +48,7 @@ static const TCHAR* kCamBlockClass = _T("CamBlockBarClass");
 typedef struct
 {
 	int nGroupNo;
-	int nLayerNo; // ¹úº¸Ìí¼Ó µÚ¼¸µÀº¸½Ó
+	int nLayerNo; // å›½ç„Šæ·»åŠ  ç¬¬å‡ é“ç„Šæ¥
 	bool bRobotThreadStatus;
 	CRobotDriverAdaptor* pRobotCtrl;
 	CAssemblyWeld* cIncisePlanePart;
@@ -124,7 +124,7 @@ public:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 
-	/******************** ³õÊ¼»¯ºÍ½çÃæ ********************/
+	/******************** åˆå§‹åŒ–å’Œç•Œé¢ ********************/
 public:
 	BOOL InitVariable();
     void InitMoveState();
@@ -132,111 +132,111 @@ public:
 	static UINT ThreadShowMoveState(void *pParam);
     void ShowMoveState(CUnit* pUnit);
 	void ShowTeachImage();
-	// ĞÂÔö£º°ÑÍ¼»­µ½Ö¸¶¨¸¸´°¿ÚµÄÖ¸¶¨¿Ø¼şIDÁĞ±í
+	// æ–°å¢ï¼šæŠŠå›¾ç”»åˆ°æŒ‡å®šçˆ¶çª—å£çš„æŒ‡å®šæ§ä»¶IDåˆ—è¡¨
 	void ShowTeachImageOn(CWnd* pParent, const std::vector<int>& drawIds);
-	// ĞÂÔö£ºÖ»»­µÚÒ»¿éµ½Ö¸¶¨¿Ø¼ş£¨³£ÓÃÓÚ×ÓÒ³Ö»ÓĞÒ»¸ö Frame£©
+	// æ–°å¢ï¼šåªç”»ç¬¬ä¸€å—åˆ°æŒ‡å®šæ§ä»¶ï¼ˆå¸¸ç”¨äºå­é¡µåªæœ‰ä¸€ä¸ª Frameï¼‰
 	void ShowTeachImageFirstOn(CWnd* pParent, int ctrlId, bool bDrawCross = false);
 	void ShowTeachImage(IplImage *pImage);
 	void SetShowImg(IplImage* pImage);
 	void SaveLastCtrlState();
 	bool LoadLastCtrlState();
 	void LoadTableGroupScan();
-	void LoadPartType(); // ¼ÓÔØËùÓĞ¹¤¼şÀàĞÍºÍµ±Ç°Ñ¡Ôñ¹¤¼ş
+	void LoadPartType(); // åŠ è½½æ‰€æœ‰å·¥ä»¶ç±»å‹å’Œå½“å‰é€‰æ‹©å·¥ä»¶
 	void LoadDebugPara();
 	void LoadOptionalFunctionPara();
 	void LoadRobotandCar(CRobotDriverAdaptor* pRobotCtrl, int tablenum);
-	//»Ø°²È«Î»ÖÃ
+	//å›å®‰å…¨ä½ç½®
 	void BackHome();
 
-	/************************ĞÂ¿ò¼ÜÌí¼Ó 2023-12-28 Start***********************/
-	//³õÊ¼»¯ËùÓĞ¿ØÖÆµ¥Ôª
+	/************************æ–°æ¡†æ¶æ·»åŠ  2023-12-28 Start***********************/
+	//åˆå§‹åŒ–æ‰€æœ‰æ§åˆ¶å•å…ƒ
 	BOOL InitAllUnit();
-	std::vector<T_CONTRAL_UNIT> m_vtContralUnitInfo;		//¿ØÖÆµ¥ÔªĞÅÏ¢
-	std::vector<CUnit*> m_vpUnit;							//¿ØÖÆµ¥Ôª¶ÔÏó
-	CServoMotorDriver* m_pServoMotorDriver = NULL;			//¿ØÖÆ¿¨	
+	std::vector<T_CONTRAL_UNIT> m_vtContralUnitInfo;		//æ§åˆ¶å•å…ƒä¿¡æ¯
+	std::vector<CUnit*> m_vpUnit;							//æ§åˆ¶å•å…ƒå¯¹è±¡
+	CServoMotorDriver* m_pServoMotorDriver = NULL;			//æ§åˆ¶å¡	
 	COPCClientCtrl* m_pOPCClientCtrl = NULL;
 	E_WORKPIECE_TYPE m_tChoseWorkPieceType = SMALL_PIECE;
 
-	/************************ĞÂ¿ò¼ÜÌí¼Ó 2023-12-28 Start***********************/
+	/************************æ–°æ¡†æ¶æ·»åŠ  2023-12-28 Start***********************/
 
-	/******************** ¹¦ÄÜº¯Êı ********************/
+	/******************** åŠŸèƒ½å‡½æ•° ********************/
 public:
-	// ¼ÆËã¸ú×ÙÏà»ú¹¤¾ß
+	// è®¡ç®—è·Ÿè¸ªç›¸æœºå·¥å…·
 	void GetCameraTool(int nRobotNo, int nCameraNo, T_ROBOT_COORS &tCameraTool);
-	// ¼ÆËãÏßÉ¨Ïà»ú¹¤¾ß
+	// è®¡ç®—çº¿æ‰«ç›¸æœºå·¥å…·
 	void GetRecogCameraTool(int nRobotNo, T_ROBOT_COORS& tRecogCameraTool);		
-	// ÇåÇ¹¼ôË¿
+	// æ¸…æªå‰ªä¸
 	bool CleanGun(CRobotDriverAdaptor *pRobotCtrl);
-	//ºèÂ·ÇåÇ¹¼ôË¿
+	//é¸¿è·¯æ¸…æªå‰ªä¸
 	bool CleanGunH(CRobotDriverAdaptor* pRobotCtrl);
-	// ±£´æÊı¾İ
+	// ä¿å­˜æ•°æ®
 	void SaveErrorData(CString strName = _T(""));
-	// ÇåÀíÊ¹ÓÃµÄ×ÊÔ´
+	// æ¸…ç†ä½¿ç”¨çš„èµ„æº
 	void CleanUp();
-	// ÏßÉ¨Ïß³Ìº¯Êı
+	// çº¿æ‰«çº¿ç¨‹å‡½æ•°
 	static UINT ThreadScanLine(void* pParam);
-	// ÏßÉ¨Ö´ĞĞº¯Êı
+	// çº¿æ‰«æ‰§è¡Œå‡½æ•°
 	bool ScanLine(int nRobotNo);
 	bool ScanLineForVzenseCam(int nRobotNo);
 	bool GetVzensePointCloud(int nRobotNo, T_CAMREA_PARAM tCamParam, std::vector<CvPoint3D64f>& vtPointCloud);
-	// ´´½¨Ö¸¶¨¹¤¼şÀàĞÍµÄ¶ÔÏóÊµÀı ·µ»ØÖ¸Õë
+	// åˆ›å»ºæŒ‡å®šå·¥ä»¶ç±»å‹çš„å¯¹è±¡å®ä¾‹ è¿”å›æŒ‡é’ˆ
 	bool CreateObject(E_WORKPIECE_TYPE ePartType, CUnit* pUnit, WAM::WeldAfterMeasure** pWeldAfterMeasure);
-	// ÏÈ²âºóº¸Ïß³Ìº¯Êı
+	// å…ˆæµ‹åç„Šçº¿ç¨‹å‡½æ•°
 	static UINT ThreadWeldAfterMeasure(void *pParam);
 	static UINT ThreadCheckWeldIO(void* pParam);
 	int CheckWeldIO(void* pParam);
-	// ÏÈ²âºóº¸Ïß³Ìº¯Êı
+	// å…ˆæµ‹åç„Šçº¿ç¨‹å‡½æ•°
 	static UINT ThreadWeldAfterMeasureMultiMachine(void* pParam);
 	bool WeldAfterMeasureMultiMachine();
-	// ÏÈ²âºóº¸Ö´ĞĞº¯Êı
+	// å…ˆæµ‹åç„Šæ‰§è¡Œå‡½æ•°
 	bool WorkWeldAfterMeasure(int nRobotNo, int& nCurGroupNo);
-	// º¸·ìÕû¶ÎÉ¨Ãè
+	// ç„Šç¼æ•´æ®µæ‰«æ
 	bool ScanWeldTrack(WAM::WeldAfterMeasure* pWeldAfterMeasure, LineOrCircularArcWeldingLine SeamData, int nRobotNo, int nGroupNo, double dSafeHeight);
 
-	// ×Ö·û´®·Ö¸î
+	// å­—ç¬¦ä¸²åˆ†å‰²
 	vector<string> split(const string& str, const string& delim);
 
-	/******	WorkWeldAfterMeasureÖ÷Á÷³Ì	******/
-	//º¸½Óµ÷¶Èº¯Êı
+	/******	WorkWeldAfterMeasureä¸»æµç¨‹	******/
+	//ç„Šæ¥è°ƒåº¦å‡½æ•°
 	bool WeldSchedule(WeldAfterMeasure *pWeldData ,int nGroupNo);
 	bool WeldSchedule_G(WeldAfterMeasure *pWeldData ,int nGroupNo, int nLayerNo);
 	bool WeldAfterMeasureMultiMachine_G();
 	static UINT ThreadGrooveWeld_G(void* pParam);
 	bool FuncGrooveWeld_G(int nRobotNo, int& nCurGroupNo, int nLayerNo);
-	/******	WorkWeldAfterMeasureÖ÷Á÷³Ì	******/
+	/******	WorkWeldAfterMeasureä¸»æµç¨‹	******/
 
-	/******************** ²âÊÔº¯Êı ********************/
+	/******************** æµ‹è¯•å‡½æ•° ********************/
 
 	static UINT ThreadTest(void* pParam);
 
 	void TestGroovePointCloudProcess();
-	// ²âÊÔµãÔÆ½Ó¿ÚÍõÈóÔó
+	// æµ‹è¯•ç‚¹äº‘æ¥å£ç‹æ¶¦æ³½
 	void TestGetEndPtnUsePointCloudWRZ();
-	// ²âÊÔµãÔÆ½Ó¿ÚÎ¤¸»½ø
+	// æµ‹è¯•ç‚¹äº‘æ¥å£éŸ¦å¯Œè¿›
 	void TestGetEndPtnUsePointCloud();
-	// ËÑË÷¶ËµãËø¶¨½Ó¿Ú²âÊÔ
+	// æœç´¢ç«¯ç‚¹é”å®šæ¥å£æµ‹è¯•
 	void TestLockProcess(int nRobotNo, int nCamerNo);
-	// ÆÂ¿Ú¼¤¹âÖĞĞÄµãÌáÈ¡²âÊÔ
+	// å¡å£æ¿€å…‰ä¸­å¿ƒç‚¹æå–æµ‹è¯•
 	void TestGrooveImageProcess(int nRobotNo, int nCameraNo);
-	// ¼¤¹âÖĞĞÄµãÌáÈ¡²âÊÔ
+	// æ¿€å…‰ä¸­å¿ƒç‚¹æå–æµ‹è¯•
 	void TestLaserCenterPtnImageProcess(int nRobotNo, int nCameraNo);
-	// ½ÇµãÍ¼Ïñ½Ó¿Ú²âÊÔ
+	// è§’ç‚¹å›¾åƒæ¥å£æµ‹è¯•
 	void TestImageProcess(int nRobotNo, int nCamerNo); 
-	// ¶Ëµã¼°×ó²àÁ¢°å¼¤¹âÏß½Ó¿Ú²âÊÔ
+	// ç«¯ç‚¹åŠå·¦ä¾§ç«‹æ¿æ¿€å…‰çº¿æ¥å£æµ‹è¯•
 	void TestEndpointAndStandBoardLine(int nRobotNo, int nCamerNo);
-	// ²âºñÍ¼Ïñ½Ó¿Ú²âÊÔ
+	// æµ‹åšå›¾åƒæ¥å£æµ‹è¯•
 	void TestFindEndPoint(); 
-	// Ö¸¶¨Æğµã¡¢°ë¾¶¡¢Æğµã·½Ïò½Ç¡¢µã¼ä¾à¡¢¹ì¼£Ô²»¡½Ç¶È(ÍêÕûÔ­360.0) Êä³öÔ²»¡»òÔ²¹ì¼£µã£¨ZÖµÏàÍ¬£©
+	// æŒ‡å®šèµ·ç‚¹ã€åŠå¾„ã€èµ·ç‚¹æ–¹å‘è§’ã€ç‚¹é—´è·ã€è½¨è¿¹åœ†å¼§è§’åº¦(å®Œæ•´åŸ360.0) è¾“å‡ºåœ†å¼§æˆ–åœ†è½¨è¿¹ç‚¹ï¼ˆZå€¼ç›¸åŒï¼‰
 	void GenetateCirclePath(XI_POINT tStartPtn, double dRadius, double dFirstPtnDirAngle, double dPtnUnit, double dTotalAngle, std::vector<XI_POINT>& vtCirclePtns);
-	//ÊÖÑÛĞ£Ñé
+	//æ‰‹çœ¼æ ¡éªŒ
 	void testCompenWithPara(CRobotDriverAdaptor* pRobotCtrl, E_CAM_ID camId);
-	// Á¢º¸°Ú¶¯Á¬Ğøµãº¸²âÊÔº¯Êı
+	// ç«‹ç„Šæ‘†åŠ¨è¿ç»­ç‚¹ç„Šæµ‹è¯•å‡½æ•°
 	void TestContiSwaySpot();
 
-	// vtCoordÂË²¨Ç°¹ì¼£ nSingleTimePtnNumµ¥´ÎÂË²¨Ê¹ÓÃµÄ¹ì¼£µãÊı nSampleIntervalÂË²¨ÊäÈëµã²ÉÑù¼ä¸ô
+	// vtCoordæ»¤æ³¢å‰è½¨è¿¹ nSingleTimePtnNumå•æ¬¡æ»¤æ³¢ä½¿ç”¨çš„è½¨è¿¹ç‚¹æ•° nSampleIntervalæ»¤æ³¢è¾“å…¥ç‚¹é‡‡æ ·é—´éš”
 	bool WeldTrackLineFilter(std::vector<T_ROBOT_COORS>& vtCoord, int nSingleTimePtnNum, int nSampleInterval);
 
-	//²âÊÔº¯Êı
+	//æµ‹è¯•å‡½æ•°
 	void TestGetEndPtnUsePointCloud_F();
 
 	void TestGetPicturePtnToPointCloud();
@@ -246,10 +246,10 @@ public:
 	bool BackHome_G();
 	static UINT ThreadBackHome(void* pParam);
 	int FuncBackHome(int nRobotNo);
-	//Ïà»ú²É¼¯µãÔÆ½Ó¿Ú(Ö»ÊÊÓÃÓÚ°²´¨ µ÷ÓÃjobÃû³ÆÎªGETCLOUD Ê¾½ÌµÄÊ±ºò±ØĞëÒªÔËĞĞµ½Æğµã)
+	//ç›¸æœºé‡‡é›†ç‚¹äº‘æ¥å£(åªé€‚ç”¨äºå®‰å· è°ƒç”¨jobåç§°ä¸ºGETCLOUD ç¤ºæ•™çš„æ—¶å€™å¿…é¡»è¦è¿è¡Œåˆ°èµ·ç‚¹)
 	void GetPoinCloud();
 	static UINT ThreadGetPointCloud(void *pParamnt);
-	//ÆÂ¿Úº¯Êı
+	//å¡å£å‡½æ•°
 	bool m_bGrooveTeachWeldRunning = false;
 	static UINT ThreadGrooveTeachWeld(void *pParam);
 	int FuncGrooceTeachWeld();
@@ -262,21 +262,21 @@ public:
 	int GrooveAutoRandNew(T_GROOVE_INFOR tGrooveInfor, vector<T_WAVE_PARA> vtTWavePara, vector<T_INFOR_WAVE_RAND>& vtGrooveRand, int nRobotDir);
 	bool JudgeGrooveStandWeld(WeldLineInfo tWeldLineInfo);
 
-// ¼ÓÔØ¶à»úÊı¾İ
-	// ¼ÓÔØ·Ö×éºóµãÔÆÊı¾İ
+// åŠ è½½å¤šæœºæ•°æ®
+	// åŠ è½½åˆ†ç»„åç‚¹äº‘æ•°æ®
 	bool LoadGroupingResult(CString sFileName = "");
 	bool LoadCloudProcessResultMultiMachine(CString sFileName = "");
 
 
-	//µÚÒ»²ã£ºµØ¹ìÃ¿´ÎÍ£ÏÂÊ±£¬Éè±¸µÄ¹¤×÷ÇøÓò
-	//µÚ¶ş²ã£ºÉè±¸¹¤×÷ÇøÓòÄÚ£¬¸÷¸ö»úĞµ±ÛµÄ¹¤×÷ÇøÓò
-	//µÚÈı²ã£º¸÷¸ö»úĞµ±ÛµÄ¹¤×÷ÇøÓòÄÚ£¬º¸·ìµÄ×é
-	//µÚËÄ²ã£ºÒ»×éº¸·ìÖĞ¸÷¸öº¸·ìµÄĞÅÏ¢
-	std::vector <std::vector < std::vector<LineOrCircularArcWeldingLine>>> m_vvvtWeldSeamData; // ¶à»úµãÔÆ´¦ÀíµÃµ½µÄº¸·ìĞÅÏ¢
-	std::vector <std::vector < std::vector<WeldLineInfo>>> m_vvvtWeldSeamInfo; // ¶à»ú°üÀ¨Ê¶±ğ½á¹û¼°º¸½ÅµÈÎŞ·¨Ê¶±ğµÄÊôĞÔĞÅÏ¢
+	//ç¬¬ä¸€å±‚ï¼šåœ°è½¨æ¯æ¬¡åœä¸‹æ—¶ï¼Œè®¾å¤‡çš„å·¥ä½œåŒºåŸŸ
+	//ç¬¬äºŒå±‚ï¼šè®¾å¤‡å·¥ä½œåŒºåŸŸå†…ï¼Œå„ä¸ªæœºæ¢°è‡‚çš„å·¥ä½œåŒºåŸŸ
+	//ç¬¬ä¸‰å±‚ï¼šå„ä¸ªæœºæ¢°è‡‚çš„å·¥ä½œåŒºåŸŸå†…ï¼Œç„Šç¼çš„ç»„
+	//ç¬¬å››å±‚ï¼šä¸€ç»„ç„Šç¼ä¸­å„ä¸ªç„Šç¼çš„ä¿¡æ¯
+	std::vector <std::vector < std::vector<LineOrCircularArcWeldingLine>>> m_vvvtWeldSeamData; // å¤šæœºç‚¹äº‘å¤„ç†å¾—åˆ°çš„ç„Šç¼ä¿¡æ¯
+	std::vector <std::vector < std::vector<WeldLineInfo>>> m_vvvtWeldSeamInfo; // å¤šæœºåŒ…æ‹¬è¯†åˆ«ç»“æœåŠç„Šè„šç­‰æ— æ³•è¯†åˆ«çš„å±æ€§ä¿¡æ¯
 	
-	/******************** ³ÉÔ±±äÁ¿ ********************/
-	CToolTipCtrl m_tooltip;					//Êó±êÍ£Áô ÌáÊ¾ĞÅÏ¢
+	/******************** æˆå‘˜å˜é‡ ********************/
+	CToolTipCtrl m_tooltip;					//é¼ æ ‡åœç•™ æç¤ºä¿¡æ¯
 	CComboBox m_comboTableGroupleft;
 	CComboBox m_ctlWorkpieceType;
 	CBrush m_bkBrush;
@@ -295,45 +295,51 @@ public:
 	BOOL m_bNaturalPop;
 	BOOL m_bTeachPop;
 	BOOL m_bProcessPop;
-	BOOL m_bMeausreThickEnable;		//×Ô¶¯²âºñ
-	BOOL m_bCleanGunEnable;			//×Ô¶¯ÇåÇ¹
+	BOOL m_bMeausreThickEnable;		//è‡ªåŠ¨æµ‹åš
+	BOOL m_bCleanGunEnable;			//è‡ªåŠ¨æ¸…æª
 	BOOL m_bNeedWrap;
 
-	UINT m_UnTracePointCloudProcess;			//µãÔÆ´¦ÀíÀàĞÍ 0²»Ê¹ÓÃµãÔÆ´¦Àí 1	2´æ+´¦ÀíµãÔÆ 
-	UINT m_UnWarpBoundWeld;						//°ü½ÇÌøÇ¹º¸½ÓÀàĞÍ£º0²»ÌøÇ¹ 1ÆğµãÌøÇ¹ 2ÖÕµãÌøÇ¹ 3Á½Í·ÌøÇ¹
-	BOOL m_bSaveTraceScanPic;					//ÊÇ·ñ´æ¸ú×ÙÔ­Í¼
+	UINT m_UnTracePointCloudProcess;			//ç‚¹äº‘å¤„ç†ç±»å‹ 0ä¸ä½¿ç”¨ç‚¹äº‘å¤„ç† 1	2å­˜+å¤„ç†ç‚¹äº‘ 
+	UINT m_UnWarpBoundWeld;						//åŒ…è§’è·³æªç„Šæ¥ç±»å‹ï¼š0ä¸è·³æª 1èµ·ç‚¹è·³æª 2ç»ˆç‚¹è·³æª 3ä¸¤å¤´è·³æª
+	BOOL m_bSaveTraceScanPic;					//æ˜¯å¦å­˜è·Ÿè¸ªåŸå›¾
 	
 	bool m_bQuit = false;
 	bool m_bThreadShowMoveStateEnd;
-	bool m_bShowAllButton;					//ÏÔÊ¾ËùÓĞ°´Å¥
-	bool HSJC;								// º¸Ë¿¼ì²â
+	bool m_bShowAllButton;					//æ˜¾ç¤ºæ‰€æœ‰æŒ‰é’®
+	bool HSJC;								// ç„Šä¸æ£€æµ‹
 	bool m_bIfEmg;							
-	bool m_bAutoWeldWorking;				// ¹¤×÷Ïß³ÌÊÇ·ñ¿ªÆô
-	BOOL m_bOpenRightRobotRightCam;			// Ïà»ú¿ª¹â×´Ì¬
+	bool m_bAutoWeldWorking;				// å·¥ä½œçº¿ç¨‹æ˜¯å¦å¼€å¯
+	BOOL m_bOpenRightRobotRightCam;			// ç›¸æœºå¼€å…‰çŠ¶æ€
 	BOOL m_bOpenRightRobotLeftCam;
 	BOOL m_bOpenLeftRobotRightCam;
 	BOOL m_bOpenLeftRobotLeftCam;
-	WORD m_cLeftCleanGunIOQQ;				//×ó»úÆ÷ÈËÇåÇ¹
-	WORD m_cLeftCleanGunIOJS;				//×ó»úÆ÷ÈË¼ôË¿
-	WORD m_cLeftCleanGunIOJJ;				//×ó»úÆ÷ÈË¼Ğ½ô
-	unsigned long long m_ullInitCtrlState;	// °´Å¥×´Ì¬ÏÔÊ¾
-	vector<UINT> m_vnDrawComponentID;			//½çÃæ»­²¼ID¼¯ºÏ
-	std::vector<int> m_vnCtrlID;			// ×Ô¶¯¿ØÖÆÊ¹ÄÜµÄ°´Å¥ID¼¯ºÏ
-	std::map<int, CString> m_nsPartType;	// ´ÓÅäÖÃÎÄ¼ş¶ÁÈ¡µÄ¹¤¼şÀàĞÍĞÅÏ¢ Ë÷Òı¹¤¼şÀàĞÍ±àºÅ
-    CMoveCtrlModule m_cMoveCtrl;			// À×Èü¿ØÖÆ¿¨¿ØÖÆµÄÍâ²¿Öá¶ÔÏó
-    vector<CScanInitModule*>m_vpScanInit;		// ÆğµãÖÕµãÉ¨ÃèÖ¸Õë		// ÆğµãÖÕµãÉ¨ÃèÖ¸Õë
-	WAM::WeldAfterMeasure* m_pWeldAfterMeasure = NULL;	// ÏÈ²âºóº¸Ö¸Õë
-	std::vector<IplImage*> m_vpShowLaserImgBuff;		// Í¼ÏñÏÔÊ¾ Ë÷Òı»úÆ÷ÈËºÅ
-	std::vector<CRobotDriverAdaptor*> m_vpRobotDriver;	// »úÆ÷ÈËÖ¸Õë Ë÷Òı»úÆ÷ÈËºÅ
-	std::vector<CLaserLineScreen*> m_vpLaserLineScreen;	// ÏßÉ¨ÀàÖ¸Õë Ë÷Òı»úÆ÷ÈËºÅ
-	std::vector<T_ROBOT_THREAD*> m_vtRobotThread;		// Ïß³Ì²ÎÊı Ë÷Òı»úÆ÷ºÅ
+	WORD m_cLeftCleanGunIOQQ;				//å·¦æœºå™¨äººæ¸…æª
+	WORD m_cLeftCleanGunIOJS;				//å·¦æœºå™¨äººå‰ªä¸
+	WORD m_cLeftCleanGunIOJJ;				//å·¦æœºå™¨äººå¤¹ç´§
+	unsigned long long m_ullInitCtrlState;	// æŒ‰é’®çŠ¶æ€æ˜¾ç¤º
+	vector<UINT> m_vnDrawComponentID;			//ç•Œé¢ç”»å¸ƒIDé›†åˆ
+	std::vector<int> m_vnCtrlID;			// è‡ªåŠ¨æ§åˆ¶ä½¿èƒ½çš„æŒ‰é’®IDé›†åˆ
+	std::map<int, CString> m_nsPartType;	// ä»é…ç½®æ–‡ä»¶è¯»å–çš„å·¥ä»¶ç±»å‹ä¿¡æ¯ ç´¢å¼•å·¥ä»¶ç±»å‹ç¼–å·
+    CMoveCtrlModule m_cMoveCtrl;			// é›·èµ›æ§åˆ¶å¡æ§åˆ¶çš„å¤–éƒ¨è½´å¯¹è±¡
+    vector<CScanInitModule*>m_vpScanInit;		// èµ·ç‚¹ç»ˆç‚¹æ‰«ææŒ‡é’ˆ		// èµ·ç‚¹ç»ˆç‚¹æ‰«ææŒ‡é’ˆ
+	WAM::WeldAfterMeasure* m_pWeldAfterMeasure = NULL;	// å…ˆæµ‹åç„ŠæŒ‡é’ˆ
+	std::vector<IplImage*> m_vpShowLaserImgBuff;		// å›¾åƒæ˜¾ç¤º ç´¢å¼•æœºå™¨äººå·
+	std::vector<CRobotDriverAdaptor*> m_vpRobotDriver;	// æœºå™¨äººæŒ‡é’ˆ ç´¢å¼•æœºå™¨äººå·
+	std::vector<CLaserLineScreen*> m_vpLaserLineScreen;	// çº¿æ‰«ç±»æŒ‡é’ˆ ç´¢å¼•æœºå™¨äººå·
+	std::vector<T_ROBOT_THREAD*> m_vtRobotThread;		// çº¿ç¨‹å‚æ•° ç´¢å¼•æœºå™¨å·
 
-	// ljx ±êÇ©Ò³ÇĞ»» ³ÉÔ±±äÁ¿
+	// ljx æ ‡ç­¾é¡µåˆ‡æ¢ æˆå‘˜å˜é‡
 	CTabCtrl   m_tab;
 	CShowCAM* m_pageScan;
 	CWeldPage*  m_pageWeld;
 	WorkPieceType* m_pagePieceType;
-	HWND   m_hBlockTop = NULL; // ¶¥²ãÕÚµ²Ìõ
+
+private:
+	bool LoadControlUnitInfos(std::vector<T_CONTRAL_UNIT>& vtUnitInfo);
+	void ResetUnitRuntimeState();
+	void DestroyUnits();
+	void InitializeUnitRuntimeArtifacts(CUnit* pUnit, int nUnitNo);
+	HWND   m_hBlockTop = NULL; // é¡¶å±‚é®æŒ¡æ¡
 
 
 	virtual void DoDataExchange(CDataExchange* pDX);
@@ -361,16 +367,16 @@ public:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-//¹ÜµÀÍ¨ĞÅ
+//ç®¡é“é€šä¿¡
 class PipeCommunication {
 public:
 	PipeCommunication(const std::string& filePath) : filePath(filePath) {}
 
-	// Ğ´¹ÜµÀÎÄ¼ş
+	// å†™ç®¡é“æ–‡ä»¶
 	void WriteToPipe(const std::string& message) {
 		std::ofstream outFile(filePath, std::ios::app);
 		if (outFile.is_open()) {
-			outFile << message << "\n"; // Ã¿´ÎĞ´ÈëÒ»ĞĞ£¬²»¸ñÊ½»¯
+			outFile << message << "\n"; // æ¯æ¬¡å†™å…¥ä¸€è¡Œï¼Œä¸æ ¼å¼åŒ–
 			outFile.close();
 		}
 		else {
@@ -378,14 +384,14 @@ public:
 		}
 	}
 
-	// ¶Á¹ÜµÀÎÄ¼ş
+	// è¯»ç®¡é“æ–‡ä»¶
 	std::string ReadFromPipe() {
 		std::ifstream inFile(filePath);
 		std::ostringstream content;
 		if (inFile.is_open()) {
 			std::string line;
 			while (std::getline(inFile, line)) {
-				content << line << "\n"; // Ã¿´Î¶ÁÈ¡Ò»ĞĞ
+				content << line << "\n"; // æ¯æ¬¡è¯»å–ä¸€è¡Œ
 			}
 			inFile.close();
 		}
@@ -395,7 +401,7 @@ public:
 		return content.str();
 	}
 
-	// Çå¿Õ¹ÜµÀÎÄ¼ş
+	// æ¸…ç©ºç®¡é“æ–‡ä»¶
 	void ClearPipe() {
 		std::ofstream outFile(filePath, std::ios::trunc);
 		if (!outFile.is_open()) {
